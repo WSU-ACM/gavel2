@@ -18,6 +18,7 @@ from flask import (
 from gavel import JSON
 from flask_json import json_response, as_json
 from collections import defaultdict
+from urllib.parse import urlparse
 
 socket = socketio
 from sqlalchemy import event
@@ -41,6 +42,14 @@ def async_action(f):
 
 
 ALLOWED_EXTENSIONS = {'csv', 'xlsx', 'xls'}
+
+
+def valid_submission_url(value):
+  try:
+    parsed = urlparse(value)
+    return parsed.scheme in ('http', 'https') and bool(parsed.netloc)
+  except (TypeError, ValueError):
+    return False
 
 
 @app.route('/legacy/')
@@ -141,13 +150,11 @@ def admin_items():
       viewed_holder.append(a.id)
     viewed[i.id] = viewed_holder
 
-  skipped = {}
+  skipped = defaultdict(list)
   for a in annotators:
-    skipped_holder = []
     for i in a.ignore:
-      if a.id not in viewed[i.id]:
-        skipped_holder.append(a.id)
-    skipped[i.id] = skipped_holder
+      if a.id not in viewed.get(i.id, []):
+        skipped[i.id].append(a.id)
 
   item_count = len(items)
 
@@ -329,16 +336,27 @@ def item():
         if settings.VIRTUAL_EVENT:
           if len(row) != 6:
             return utils.user_error('Bad data: row %d has %d elements (expecting 6)' % (index + 1, len(row)))
+          submission_url = row[4]
         else:
-          if len(row) != 3:
-            return utils.user_error('Bad data: row %d has %d elements (expecting 3)' % (index + 1, len(row)))
+          if len(row) != 4:
+            return utils.user_error('Bad data: row %d has %d elements (expecting 4)' % (index + 1, len(row)))
+          submission_url = row[3]
+        if not valid_submission_url(submission_url):
+          return utils.user_error('Bad data: row %d has an invalid OrganizerHQ URL' % (index + 1))
       def tx():
         for row in data:
-          # This is REALLY REALLY bad I know...
-          # TODO: Tech Debt
           if settings.VIRTUAL_EVENT:
-            row.insert(1, "N/A")
-          _item = Item(*row)
+            _item = Item(
+              row[0],
+              'N/A',
+              row[1],
+              tagline=row[2],
+              video_reference=row[3],
+              submission_reference=row[4],
+              submission_website=row[5],
+            )
+          else:
+            _item = Item(row[0], row[1], row[2], submission_reference=row[3])
           db.session.add(_item)
         db.session.commit()
       with_retries(tx)
@@ -454,6 +472,15 @@ def admin_api_session():
         pass
       def tx():
         Setting.set(SETTING_CLOSED, setting_stop)
+        if setting_stop == SETTING_TRUE:
+          phase = PHASE_CLOSED
+        elif Tournament.query.filter_by(status='active').first() is not None:
+          phase = PHASE_BRACKET
+        elif Tournament.query.filter_by(status='complete').first() is not None:
+          phase = PHASE_CLOSED
+        else:
+          phase = PHASE_INITIAL
+        Setting.set(SETTING_PHASE, phase)
         db.session.commit()
       with_retries(tx)
     # Soft shutdown (await final judge submission)
@@ -569,8 +596,7 @@ def parse_upload_form():
     if extension == "xlsx" or extension == "xls":
       workbook = xlrd.open_workbook(file_contents=f.read())
       worksheet = workbook.sheet_by_index(0)
-      data = list(utils.cast_row(worksheet.row_values(rx, 0, 3)) for rx in range(worksheet.nrows) if
-                  worksheet.row_len(rx) == 3)
+      data = [utils.cast_row(worksheet.row_values(rx)) for rx in range(worksheet.nrows)]
     elif extension == "csv":
       data = utils.data_from_csv_string(f.read().decode("utf-8"))
   else:
@@ -582,6 +608,12 @@ def parse_upload_form():
 @app.route('/admin/item_patch', methods=['POST'])
 @utils.requires_auth
 def item_patch():
+  submission_reference = request.form.get('submission_reference')
+  if submission_reference is not None:
+    submission_reference = submission_reference.strip()
+    if not valid_submission_url(submission_reference):
+      return utils.user_error('OrganizerHQ URL must be a valid HTTP or HTTPS URL.')
+
   def tx():
     item = Item.by_id(request.form['item_id'])
     if not item:
@@ -597,7 +629,7 @@ def item_patch():
     if 'video_reference' in request.form:
       item.video_reference = request.form['video_reference']
     if 'submission_reference' in request.form:
-      item.submission_reference = request.form['submission_reference']
+      item.submission_reference = submission_reference
     if 'submission_website' in request.form:
       item.submission_website = request.form['submission_website']
     db.session.commit()
@@ -628,18 +660,35 @@ def admin_api_item_patch():
 @app.route('/admin/annotator_patch', methods=['POST'])
 @utils.requires_auth
 def annotator_patch():
-  def tx():
-    annotator = Annotator.by_id(request.form['annotator_id'])
-    if not item:
-      return utils.user_error('Annotator %s not found ' % request.form['annotator_id'])
-    if 'name' in request.form:
-      annotator.name = request.form['name']
-    if 'email' in request.form:
-      annotator.email = request.form['email']
-    if 'description' in request.form:
-      annotator.description = request.form['description']
-    db.session.commit()
-  with_retries(tx)
+  try:
+    def tx():
+      annotator = Annotator.by_id(request.form['annotator_id'])
+      if not annotator:
+        raise ValueError('Participant %s not found' % request.form['annotator_id'])
+      if 'name' in request.form:
+        annotator.name = request.form['name']
+      if 'email' in request.form:
+        annotator.email = request.form['email']
+      if 'description' in request.form:
+        annotator.description = request.form['description']
+      if 'project_id' in request.form:
+        raw_project_id = request.form['project_id'].strip()
+        project = Item.by_id(raw_project_id) if raw_project_id else None
+        if raw_project_id and project is None:
+          raise ValueError('Project %s not found' % raw_project_id)
+        if annotator.project_id != (project.id if project else None):
+          has_initial_votes = Decision.query.filter_by(annotator_id=annotator.id).first() is not None
+          has_bracket_votes = BracketVote.query.filter_by(annotator_id=annotator.id).first() is not None
+          if has_initial_votes or has_bracket_votes:
+            raise ValueError('A participant project cannot be changed after they have voted.')
+          annotator.project = project
+          annotator.prev = None
+          annotator.update_next(None)
+      db.session.commit()
+    with_retries(tx)
+  except ValueError as error:
+    db.session.rollback()
+    return utils.user_error(str(error))
   return redirect(url_for('annotator_detail', annotator_id=request.form['annotator_id']))
 
 
@@ -653,11 +702,15 @@ def annotator():
     if data:
       # validate data
       for index, row in enumerate(data):
-        if len(row) != 3:
-          return utils.user_error('Bad data: row %d has %d elements (expecting 3)' % (index + 1, len(row)))
+        if len(row) != 4:
+          return utils.user_error('Bad data: row %d has %d elements (expecting 4)' % (index + 1, len(row)))
+        if not row[3].strip() or Item.by_id(row[3].strip()) is None:
+          return utils.user_error('Bad data: row %d references project %s, which does not exist' % (index + 1, row[3]))
       def tx():
         for row in data:
-          annotator = Annotator(*row)
+          annotator = Annotator(*row[:3])
+          project = Item.by_id(row[3].strip())
+          annotator.project = project
           added.append(annotator)
           db.session.add(annotator)
         db.session.commit()
@@ -731,6 +784,15 @@ def setting():
     action = request.form['action']
     new_value = SETTING_TRUE if action == 'Close' else SETTING_FALSE
     Setting.set(SETTING_CLOSED, new_value)
+    if new_value == SETTING_TRUE:
+      phase = PHASE_CLOSED
+    elif Tournament.query.filter_by(status='active').first() is not None:
+      phase = PHASE_BRACKET
+    elif Tournament.query.filter_by(status='complete').first() is not None:
+      phase = PHASE_CLOSED
+    else:
+      phase = PHASE_INITIAL
+    Setting.set(SETTING_PHASE, phase)
     db.session.commit()
   return redirect(url_for('admin'))
 
@@ -776,6 +838,7 @@ def annotator_detail(annotator_id):
     return render_template(
       'admin_annotator.html',
       annotator=annotator,
+      items=Item.query.order_by(Item.name).all(),
       login_link=annotator_link(annotator),
       seen=seen,
       skipped=skipped

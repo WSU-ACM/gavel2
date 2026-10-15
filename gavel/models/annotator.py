@@ -28,6 +28,13 @@ class Annotator(BaseModel):
     prev_id = db.Column(db.Integer, db.ForeignKey('item.id'))
     prev = db.relationship('Item', foreign_keys=[prev_id], uselist=False)
     ignore = db.relationship('Item', secondary=ignore_table)
+    project_id = db.Column(db.Integer, db.ForeignKey('item.id', ondelete='SET NULL'), index=True)
+    project = db.relationship(
+        'Item',
+        foreign_keys=[project_id],
+        back_populates='members',
+        uselist=False,
+    )
 
     alpha = db.Column(db.Float)
     beta = db.Column(db.Float)
@@ -40,11 +47,12 @@ class Annotator(BaseModel):
                        "description",
                        "next_id",
                        "prev_id",
+                       "project_id",
                        "ignore",
                        "updated"]
     _secret_fields = ["secret"]
 
-    relations_keys = ("next", "prev", "ignore")
+    relations_keys = ("next", "prev", "project", "ignore")
 
     def __init__(self, name, email, description):
         self.name = name

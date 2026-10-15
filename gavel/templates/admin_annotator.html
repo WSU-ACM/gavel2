@@ -1,5 +1,5 @@
 {% extends "layout.html" %}
-{% block title %}Judge{% endblock %}
+{% block title %}Participant{% endblock %}
 {% block content %}
   <div class="item" >
     <div class="container" style="padding: 0;">
@@ -9,21 +9,31 @@
           text-align: left;
         }
       </style>
-      <h4 class="text-20" id="title">Judge ID: <span id="id">{{ annotator.id }}</span></h4>
+      <h4 class="text-20" id="title">Participant ID: <span id="id">{{ annotator.id }}</span></h4>
 
       <label class="block">
         <span class="text-bold text-12">Name</span>
-        <input form="annotatorUpdateForm" name="name" type="text" class="form-input block w-full text-12" placeholder="Judge Name" value="{{ annotator.name | safe }}">
+        <input form="annotatorUpdateForm" name="name" type="text" class="form-input block w-full text-12" placeholder="Participant Name" value="{{ annotator.name }}">
       </label>
 
       <label class="block">
         <span class="text-bold text-12">Email</span>
-        <input form="annotatorUpdateForm" name="email" type="email" class="form-input block w-full text-12" placeholder="Judge Email" value="{{ annotator.email | safe }}">
+        <input form="annotatorUpdateForm" name="email" type="email" class="form-input block w-full text-12" placeholder="Participant Email" value="{{ annotator.email }}">
       </label>
 
       <label class="block mb-1.2">
         <span class="text-bold text-12">Description</span>
-        <textarea form="annotatorUpdateForm" name="description" class="form-textarea block w-full text-12" rows="2" placeholder="Judge Description">{{ annotator.description | safe }}</textarea>
+        <textarea form="annotatorUpdateForm" name="description" class="form-textarea block w-full text-12" rows="2" placeholder="Participant Description">{{ annotator.description }}</textarea>
+      </label>
+
+      <label class="block mb-1.2">
+        <span class="text-bold text-12">Participant's Project</span>
+        <select form="annotatorUpdateForm" name="project_id" class="form-select block w-full text-12">
+          <option value="">No project</option>
+          {% for item in items %}
+            <option value="{{ item.id }}" {% if annotator.project_id == item.id %}selected{% endif %}>{{ item.name }}</option>
+          {% endfor %}
+        </select>
       </label>
 
       <p class="text-12">
@@ -71,7 +81,7 @@
       <p class="text-12">
         <strong>Updated: </strong>
         <span id="updated">
-        {{ annotator.updated | safe }}
+        {{ annotator.updated }}
         </span>
       </p>
       <p class="text-12"><strong>Avg Pace: </strong>
@@ -83,13 +93,13 @@
       <p class="text-12">
         <strong>Alpha: </strong>
         <span id="alpha">
-        {{ annotator.alpha | safe }}
+        {{ annotator.alpha }}
         </span>
       </p>
       <p class="text-12">
         <strong>Beta: </strong>
         <span id="beta">
-        {{ annotator.beta | safe }}
+        {{ annotator.beta }}
         </span>
       </p>
       <p class="text-12">

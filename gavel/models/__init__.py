@@ -20,6 +20,12 @@ from gavel.models.item import Item, view_table
 from gavel.models.decision import Decision
 from gavel.models.setting import Setting
 from gavel.models.flag import Flag
+from gavel.models.tournament import (
+    Tournament,
+    TournamentEntry,
+    BracketMatch,
+    BracketVote,
+)
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.sql.expression import desc

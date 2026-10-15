@@ -30,6 +30,11 @@ class Item(BaseModel):
 
     active = db.Column(db.Boolean, default=True, nullable=False)
     viewed = db.relationship('Annotator', secondary=view_table)
+    members = db.relationship(
+        'Annotator',
+        foreign_keys='Annotator.project_id',
+        back_populates='project',
+    )
     prioritized = db.Column(db.Boolean, default=False, nullable=False)
     flags = db.relationship('Flag', back_populates="item")
     updated = db.Column(db.DateTime, onupdate=datetime.utcnow)
@@ -53,7 +58,7 @@ class Item(BaseModel):
         "updated"
     ]
 
-    relations_keys = ("viewed", "flags")
+    relations_keys = ("viewed", "members", "flags")
 
     def __init__(self, name, location, description, tagline="N/A", video_reference="N/A", submission_reference="N/A", submission_website="N/A"):
         self.name = name

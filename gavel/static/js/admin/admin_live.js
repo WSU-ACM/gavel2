@@ -229,6 +229,7 @@ async function initTables() {
     {headerName:"Name", field:"name", width: standardNameWidth, minWidth: minDecimalWidth, filter: true},
     {headerName:"Email", field:"email", filter: true},
     {headerName:"Description", field: "description", ...standardDescriptionOptions},
+    {headerName:"Project ID", field:"project_id", minWidth: minDecimalWidth, width: standardDecimalWidth},
     {headerName:"Votes", field:"votes", minWidth: minDecimalWidth, width: standardDecimalWidth},
     {headerName:"Next (ID)", field:"next", width: standardDecimalWidth},
     {headerName:"Prev. (ID)", field:"prev", width: standardDecimalWidth},
@@ -244,10 +245,10 @@ async function initTables() {
         {headerName:"Project Name", width: standardNameWidth, minWidth: minDecimalWidth, field:"name", filter: true},
         ...(!getIsVirtual() ? [{headerName:"Location", width: standardLocationWidth, minWidth: minDecimalWidth, field:"location", filter: true, columnGroupShow: "open"}] : []),
         {headerName:"Description", field:"description", ...standardDescriptionOptions, columnGroupShow: "open"},
+        {headerName:"OrganizerHQ", width: standardLocationWidth, minWidth: minDecimalWidth, field:"submission_reference", filter: true, columnGroupShow: "open", cellRenderer: UrlRenderer},
         ...(getIsVirtual() ? [
           {headerName:"Tagline", field:"tagline", ...standardDescriptionOptions, columnGroupShow: "open"},
           {headerName:"Video", width: standardLocationWidth, minWidth: minDecimalWidth, field:"video_reference", filter: true, columnGroupShow: "open", cellRenderer: UrlRenderer},
-          {headerName:"Submission", width: standardLocationWidth, minWidth: minDecimalWidth, field:"submission_reference", filter: true, columnGroupShow: "open", cellRenderer: UrlRenderer},
           {headerName:"Website", width: standardLocationWidth, minWidth: minDecimalWidth, field:"submission_website", filter: true, columnGroupShow: "open", cellRenderer: UrlRenderer}
         ] : [])
       ]
@@ -262,7 +263,7 @@ async function initTables() {
   flagDefs = [
     {headerName:"Actions", field: "resolved", ...standardActionOptions, cellRenderer: FlagActionCellRenderer, comparator: flagActionsComparator},
     {headerName:"ID", field: "id", width: standardIdWidth, minWidth: minIdWidth, cellRenderer: FlagIdRenderer},
-    {headerName:"Judge Name", field:"annotator_name", width: standardNameWidth},
+    {headerName:"Participant Name", field:"annotator_name", width: standardNameWidth},
     {headerName:"Project Name", field:"item_name", width: standardNameWidth},
     {headerName:"Project Location", field:"item_location", width: standardLocationWidth},
     {headerName:"Reason", field:"reason", width: standardLocationWidth},
@@ -552,17 +553,31 @@ FlagIdRenderer.prototype.refresh = (params) => {
 FlagIdRenderer.prototype.destroy = () => {}
 
 function UrlRenderer () {}
+function renderUrl(container, value) {
+  container.textContent = ''
+  if (!value) return
+  try {
+    const url = new URL(value)
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return
+    const link = document.createElement('a')
+    link.href = url.href
+    link.target = '_blank'
+    link.rel = 'noopener noreferrer'
+    link.textContent = value
+    container.appendChild(link)
+  } catch (ignored) {
+    return
+  }
+}
 UrlRenderer.prototype.init = (params) => {
   this.eGui = document.createElement('div')
-  const val = params.value
-  this.eGui.innerHTML = `<a href=${val} target="_blank" rel="noopener noreferrer">${val}</a>`
+  renderUrl(this.eGui, params.value)
 }
 UrlRenderer.prototype.getGui = () => {
   return this.eGui
 }
 UrlRenderer.prototype.refresh = (params) => {
-  const val = params.value
-  this.eGui.innerHTML = `<a href=${val} target="_blank" rel="noopener noreferrer">${val}</a>`
+  renderUrl(this.eGui, params.value)
   return true;
 }
 UrlRenderer.prototype.destroy = () => {}
@@ -748,7 +763,7 @@ function showTab(e) {
 
   switch (localStorage.getItem("currentTab")) {
     case "annotators":
-      content.innerText = "Manage Judges";
+      content.innerText = "Manage Participants";
       batch.style.display = "flex";
       annotators.style.display = "block"
       break;
@@ -775,7 +790,7 @@ function setAddButtonState() {
   const text = document.getElementById('add-text');
   const add = document.getElementById('add');
   if (tab === "annotators") {
-    text.innerText = "Add Judges";
+    text.innerText = "Add Participants";
     text.onclick = function () {
       openModal('add-judges')
     };

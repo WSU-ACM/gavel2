@@ -13,13 +13,13 @@
       
       <label class="block">
         <span class="text-bold text-12">Name</span>
-        <input form="itemUpdateForm" name="name" type="text" class="form-input block w-full text-12" placeholder="Project Name" value="{{ item.name | safe }}">
+        <input form="itemUpdateForm" name="name" type="text" class="form-input block w-full text-12" placeholder="Project Name" value="{{ item.name }}">
       </label>
 
       <!-- <p class="normal-14"><span class="bold-14">Name: </span>
         <span>
           <form action="/admin/item_patch" method="post" class="form-inline">
-            <input type="text" class="form-input text-14" name="name" value="{{ item.name | safe }}">
+            <input type="text" class="form-input text-14" name="name" value="{{ item.name }}">
             <button type="submit" name="action" value="Update" >Update</button>
             <input type="hidden" name="item_id" value="{{ item.id }}">
             <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
@@ -29,7 +29,7 @@
       <!-- <p class="normal-14"><span class="bold-14">Location: </span>
         <span>
           <form action="/admin/item_patch" method="post" class="form-inline">
-            <input type="text" class="form-input" name="location" value="{{ item.location | safe }}">
+            <input type="text" class="form-input" name="location" value="{{ item.location }}">
             <button type="submit" name="action" value="Update">Update</button>
             <input type="hidden" name="item_id" value="{{ item.id }}">
             <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
@@ -39,38 +39,45 @@
       {% if not virtual %}
       <label class="block">
         <span class="text-bold text-12">Location</span>
-        <input form="itemUpdateForm" name="location" type="text" class="form-input block w-full text-12" placeholder="Project Location" value="{{ item.location | safe }}">
+        <input form="itemUpdateForm" name="location" type="text" class="form-input block w-full text-12" placeholder="Project Location" value="{{ item.location }}">
       </label>
       {% endif %}
       <div>
         <label class="block">
           <span class="text-bold text-12">Description</span>
-          <textarea form="itemUpdateForm" name="description" class="form-textarea block w-full text-12" rows="5" placeholder="Project Description">{{ item.description | safe }}</textarea>
+          <textarea form="itemUpdateForm" name="description" class="form-textarea block w-full text-12" rows="5" placeholder="Project Description">{{ item.description }}</textarea>
         </label>
       </div>
       {% if virtual %}
       <label class="block">
         <span class="text-bold text-12">Tagline</span>
-        <input form="itemUpdateForm" name="tagline" type="text" class="form-input block w-full text-12" placeholder="Project Tagline" value="{{ item.tagline | safe }}">
+        <input form="itemUpdateForm" name="tagline" type="text" class="form-input block w-full text-12" placeholder="Project Tagline" value="{{ item.tagline }}">
       </label>
       <label class="block">
         <span class="text-bold text-12">Video URL</span>
-        <input form="itemUpdateForm" name="video_reference" type="text" class="form-input block w-full text-12" placeholder="Project Video URL" value="{{ item.video_reference | safe }}">
-      </label>
-      <label class="block">
-        <span class="text-bold text-12">Submission URL</span>
-        <input form="itemUpdateForm" name="submission_reference" type="text" class="form-input block w-full text-12" placeholder="Project Submission URL" value="{{ item.submission_reference | safe }}">
+        <input form="itemUpdateForm" name="video_reference" type="text" class="form-input block w-full text-12" placeholder="Project Video URL" value="{{ item.video_reference }}">
       </label>
       <label class="block">
         <span class="text-bold text-12">Website URL</span>
-        <input form="itemUpdateForm" name="submission_website" type="text" class="form-input block w-full text-12" placeholder="Project Website URL" value="{{ item.submission_website | safe }}">
+        <input form="itemUpdateForm" name="submission_website" type="text" class="form-input block w-full text-12" placeholder="Project Website URL" value="{{ item.submission_website }}">
       </label>
       {% endif %}
+      <label class="block">
+        <span class="text-bold text-12">OrganizerHQ URL</span>
+        <input form="itemUpdateForm" name="submission_reference" type="url" required class="form-input block w-full text-12" placeholder="https://..." value="{{ item.submission_reference }}">
+      </label>
+      <p class="text-12"><strong>Team Members: </strong>
+        {% for member in item.members %}
+          <a class="text-indigo" href="{{ url_for('annotator_detail', annotator_id=member.id) }}">{{ member.name }}</a>{% if not loop.last %}, {% endif %}
+        {% else %}
+          None
+        {% endfor %}
+      </p>
       <!-- <p class="normal-14">
         <span class="bold-14">Description:</span>
         <br>
         <span>
-          <textarea name="description" form="description_form" style="max-width: 100%;">{{ item.description | safe }}</textarea>
+          <textarea name="description" form="description_form" style="max-width: 100%;">{{ item.description }}</textarea>
             <form action="/admin/item_patch" method="post" id="description_form" class="form-inline">
               <input type="hidden" name="item_id" value="{{ item.id }}">
               <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
@@ -80,7 +87,7 @@
       </p> -->
       <p class="text-12 mt-1.2"><strong>Mu: </strong>{{ item.mu }}</p>
       <p class="text-12"><strong>Sigma Squared: </strong>{{ item.sigma_sq }}</p>
-      <p class="text-12"><strong>Seen By Judges: </strong>
+      <p class="text-12"><strong>Seen By Participants: </strong>
       <span>
         {% for annotator in item.viewed %}
                   <span><a href="{{ url_for('annotator_detail', annotator_id=annotator.id) }}"
@@ -88,7 +95,7 @@
                 {% endfor %}
       </span>
       </p>
-      <p class="text-12"><strong>Skipped By Judges: </strong>
+      <p class="text-12"><strong>Skipped By Participants: </strong>
       <span>
         {% for annotator in skipped %}
                   <span><a href="{{ url_for('annotator_detail', annotator_id=annotator.id) }}"

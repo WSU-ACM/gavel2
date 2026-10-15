@@ -1,0 +1,84 @@
+{% extends "layout.html" %}
+{% block title %}Bracket Control{% endblock %}
+{% block content %}
+<div class="container py-3">
+  <div class="flex flex-wrap justify-between items-center mb-2.4">
+    <div>
+      <p class="uppercase text-indigo text-12 font-medium">Gavel admin</p>
+      <h1 class="text-24">Leaderboard and bracket</h1>
+    </div>
+    <a href="{{ url_for('admin') }}" class="text-indigo font-medium">Dashboard</a>
+  </div>
+
+  <section class="mb-3 p-1.6 border border-lightgray rounded">
+    <div class="flex flex-wrap justify-between items-end">
+      <div>
+        <h2 class="text-20">Initial-round leaderboard</h2>
+        <p class="text-gray text-12">Updates every three seconds. Scores are visible only to administrators.</p>
+      </div>
+      <form action="{{ url_for('admin_bracket_action') }}" method="post" class="flex flex-wrap items-end mt-.8">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="create">
+        <label class="text-12 mr-.8">Top N
+          <select name="size" class="form-select block">
+            <option>2</option><option>4</option><option>8</option><option>16</option>
+          </select>
+        </label>
+        <button class="h-4 px-1.2 bg-indigo text-white rounded" type="submit">Create bracket</button>
+      </form>
+    </div>
+    <div class="overflow-auto mt-1.6">
+      <table class="w-full text-12">
+        <thead><tr><th>Rank</th><th>Project</th><th>Mu</th><th>Sigma²</th><th>Comparisons</th></tr></thead>
+        <tbody id="leaderboard"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="text-20 mb-1.2">Elimination matches</h2>
+    <p id="bracket-summary" class="text-gray mb-1.2"></p>
+    <div id="matches"></div>
+  </section>
+</div>
+<script>
+  const csrfToken = "{{ csrf_token() }}";
+  function escapeHtml(value) {
+    const span = document.createElement("span");
+    span.textContent = value == null ? "" : String(value);
+    return span.innerHTML;
+  }
+  function actionForm(action, match, label, includeTie) {
+    const tie = includeTie ? `<select name="tie_winner_id" class="form-select mr-.8"><option value="">Tie winner if needed</option><option value="${match.item_a.id}">${escapeHtml(match.item_a.name)}</option><option value="${match.item_b.id}">${escapeHtml(match.item_b.name)}</option></select>` : "";
+    return `<form action="{{ url_for('admin_bracket_action') }}" method="post" class="flex flex-wrap items-center mt-.8"><input type="hidden" name="_csrf_token" value="${csrfToken}"><input type="hidden" name="action" value="${action}"><input type="hidden" name="match_id" value="${match.id}">${tie}<button class="h-3 px-1.2 bg-indigo text-white rounded" type="submit">${label}</button></form>`;
+  }
+  async function refreshBracket() {
+    const existingTieWinnerSelect = document.querySelector('select[name="tie_winner_id"]');
+    const selectedTieWinner = existingTieWinnerSelect ? existingTieWinnerSelect.value : null;
+    const response = await fetch("{{ url_for('admin_bracket_state') }}", {credentials: "same-origin"});
+    if (!response.ok) return;
+    const state = await response.json();
+    document.getElementById("leaderboard").innerHTML = state.ranking.map(row => `<tr><td>${row.rank}</td><td>${escapeHtml(row.name)}</td><td>${row.mu.toFixed(4)}</td><td>${row.sigma_sq.toFixed(4)}</td><td>${row.comparisons}</td></tr>`).join("");
+    const tournament = state.tournament;
+    document.getElementById("bracket-summary").textContent = tournament ? `Bracket ${tournament.id}: ${tournament.status}${tournament.champion ? `, champion: ${tournament.champion}` : ""}` : "No bracket has been created.";
+    document.getElementById("matches").innerHTML = tournament ? tournament.matches.map(match => {
+      const names = match.ready ? `${escapeHtml(match.item_a.name)} vs. ${escapeHtml(match.item_b.name)}` : "Waiting for prior winners";
+      const score = match.ready ? `${match.item_a.votes} - ${match.item_b.votes}` : "";
+      let controls = "";
+      if (match.status === "pending" && match.ready && tournament.status === "active") controls = actionForm("open", match, "Open voting", false);
+      if (match.status === "open") controls = actionForm("close", match, "Close and advance", true);
+      return `<div class="p-1.2 mb-.8 border border-lightgray rounded"><div class="flex justify-between"><strong>Round ${match.round}, match ${match.position + 1}</strong><span>${match.status}</span></div><p>${names}</p><p class="text-indigo">${score}${match.status === "open" ? ` (${match.ballots} of ${match.eligible_voters} eligible voters)` : ""}</p>${controls}</div>`;
+    }).join("") : "";
+    const tieWinnerSelect = document.querySelector('select[name="tie_winner_id"]');
+    if (tieWinnerSelect && selectedTieWinner) tieWinnerSelect.value = selectedTieWinner;
+  }
+  async function pollAdminBracket() {
+    try {
+      await refreshBracket();
+    } finally {
+      window.setTimeout(pollAdminBracket, 3000);
+    }
+  }
+  pollAdminBracket();
+</script>
+{% endblock %}

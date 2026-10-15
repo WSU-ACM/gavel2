@@ -26,9 +26,14 @@ SESSION_UPDATED = 'session.updated'
 # keys
 SETTING_CLOSED = 'closed' # boolean
 SETTING_STOP_QUEUE = 'queued' # boolean
+SETTING_PHASE = 'phase'
 # values
 SETTING_TRUE = 'true'
 SETTING_FALSE = 'false'
+
+PHASE_INITIAL = 'initial'
+PHASE_BRACKET = 'bracket'
+PHASE_CLOSED = 'closed'
 
 # Defaults
 # these can be overridden via the config file
@@ -49,7 +54,7 @@ If at any point, you can't find a particular submission, you can click the
 'Skip' button and you will be assigned a new project. **Please don't skip
 unless absolutely necessary.**
 
-Gavel makes it really simple for you to submit votes, but please think hard
+Gavel makes it simple for participants to submit votes, but please think hard
 before you vote. **Once you make a decision, you can't take it back**.
 '''.strip()
 
@@ -58,7 +63,7 @@ DEFAULT_EMAIL_SUBJECT = 'Welcome to Gavel!'
 DEFAULT_EMAIL_BODY = '''
 Hi {name},
 
-Welcome to Gavel, the online expo judging system. This email contains your
+Welcome to Gavel, the online hackathon voting system. This email contains your
 magic link to the judging system.
 
 DO NOT SHARE this email with others, as it contains your personal magic link.

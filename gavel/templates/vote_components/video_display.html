@@ -41,7 +41,7 @@
 
   window.addEventListener("DOMContentLoaded", () => {
     const wrapper = document.getElementById("embedvideo-{{ id }}")
-    wrapper.innerHTML = generateVideoView("{{ url }}")
+    wrapper.innerHTML = generateVideoView({{ url | tojson }})
   })
 </script>
 <div id="embedvideo-{{ id }}" class="block">

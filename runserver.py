@@ -4,7 +4,7 @@
 # details.
 
 if __name__ == '__main__':
-    from gavel import socketio
+    from gavel import app, socketio
     from gavel.settings import PORT
     import os
 
@@ -13,11 +13,11 @@ if __name__ == '__main__':
         socketio.debug = True
         extra_files.append('./config.yaml')
 
-    socketio.jinja_env.cache = {}
+    app.jinja_env.cache = {}
     
     socketio.run(
+        app,
         host='0.0.0.0',
         port=PORT,
         extra_files=extra_files,
-        threaded=True
     )

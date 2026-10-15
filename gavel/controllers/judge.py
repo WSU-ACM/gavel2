@@ -4,6 +4,7 @@ from gavel.constants import *
 import gavel.settings as settings
 import gavel.utils as utils
 import gavel.crowd_bt as crowd_bt
+import gavel.bracket as bracket
 from flask import (
     redirect,
     render_template,
@@ -15,11 +16,11 @@ from numpy.random import choice, random, shuffle
 from functools import wraps
 from datetime import datetime
 
-def requires_open(redirect_to):
+def requires_initial_phase(redirect_to):
     def decorator(f):
         @wraps(f)
         def decorated(*args, **kwargs):
-            if Setting.value_of(SETTING_CLOSED) == SETTING_TRUE:
+            if bracket.current_phase() != PHASE_INITIAL:
                 return redirect(url_for(redirect_to))
             else:
                 return f(*args, **kwargs)
@@ -48,7 +49,20 @@ def index():
             content=utils.render_markdown(settings.LOGGED_OUT_MESSAGE)
         )
     else:
-        if Setting.value_of(SETTING_CLOSED) == SETTING_TRUE:
+        phase = bracket.current_phase()
+        if phase == PHASE_CLOSED:
+            completed_tournament = Tournament.query.filter_by(
+                status='complete'
+            ).order_by(Tournament.id.desc()).first()
+            if completed_tournament is not None:
+                return render_template(
+                    'bracket_vote.html',
+                    tournament=completed_tournament,
+                    match=None,
+                    existing_vote=None,
+                    eligible=False,
+                    phase=phase,
+                )
             return render_template(
                 'closed.html',
                 content=utils.render_markdown(settings.CLOSED_MESSAGE)
@@ -62,6 +76,40 @@ def index():
             return render_template(
                 'closed.html',
                 content=utils.render_markdown(settings.CLOSING_MESSAGE)
+            )
+        if annotator.project_id is None:
+            return render_template(
+                'disabled.html',
+                content=utils.render_markdown(
+                    'Your account has not been assigned to a project. Please contact an organizer.'
+                ),
+            )
+        if phase == PHASE_BRACKET:
+            tournament = bracket.active_tournament()
+            current_match = None
+            existing_vote = None
+            eligible = False
+            if tournament is not None:
+                current_match = BracketMatch.query.filter_by(
+                    tournament_id=tournament.id,
+                    status='open',
+                ).first()
+            if current_match is not None:
+                existing_vote = BracketVote.query.filter_by(
+                    match_id=current_match.id,
+                    annotator_id=annotator.id,
+                ).first()
+                eligible = annotator.project_id not in (
+                    current_match.item_a_id,
+                    current_match.item_b_id,
+                )
+            return render_template(
+                'bracket_vote.html',
+                tournament=tournament,
+                match=current_match,
+                existing_vote=existing_vote,
+                eligible=eligible,
+                phase=phase,
             )
         if not annotator.read_welcome:
             return redirect(url_for('welcome'))
@@ -77,12 +125,27 @@ def index():
             return render_template('vote.html', prev=annotator.prev, next=annotator.next)
 
 @app.route('/vote', methods=['POST'])
-@requires_open(redirect_to='index')
+@requires_initial_phase(redirect_to='index')
 @requires_active_annotator(redirect_to='index')
 def vote():
+    try:
+        prev_id = int(request.form.get('prev_id', ''))
+        next_id = int(request.form.get('next_id', ''))
+    except ValueError:
+        return utils.user_error('Invalid voting assignment.')
+
     def tx():
         annotator = get_current_annotator()
-        if annotator.prev.id == int(request.form['prev_id']) and annotator.next.id == int(request.form['next_id']):
+        if bracket.current_phase() != PHASE_INITIAL:
+            return
+        if annotator.prev is None or annotator.next is None:
+            return
+        if annotator.prev.id == prev_id and annotator.next.id == next_id:
+            if annotator.project_id in (annotator.prev_id, annotator.next_id):
+                annotator.prev = None
+                annotator.update_next(None)
+                db.session.commit()
+                return
             if request.form['action'] in ['Skip', 'SkipAbsent', 'SkipBusy']:
                 annotator.ignore.append(annotator.next)
 
@@ -113,15 +176,22 @@ def vote():
     return redirect(url_for('index'))
 
 @app.route('/report', methods=['POST'])
-@requires_open(redirect_to='index')
+@requires_initial_phase(redirect_to='index')
 @requires_active_annotator(redirect_to='index')
 def report():
+    try:
+        next_id = int(request.form.get('next_id', ''))
+    except ValueError:
+        return utils.user_error('Invalid project assignment.')
+
     def tx():
         annotator = get_current_annotator()
+        if bracket.current_phase() != PHASE_INITIAL or annotator.next is None:
+            return
         reason = request.form['reason']
         if reason in ['Unknown', '']:
             return
-        if annotator.next.id == int(request.form['next_id']):
+        if annotator.next.id == next_id:
             flag = Flag(annotator, annotator.next, reason)
             db.session.add(flag)
             annotator.ignore.append(annotator.next)
@@ -134,12 +204,23 @@ def report():
     return redirect(url_for('index'))
 
 @app.route('/begin', methods=['POST'])
-@requires_open(redirect_to='index')
+@requires_initial_phase(redirect_to='index')
 @requires_active_annotator(redirect_to='index')
 def begin():
+    try:
+        item_id = int(request.form.get('item_id', ''))
+    except ValueError:
+        return utils.user_error('Invalid project assignment.')
+
     def tx():
         annotator = get_current_annotator()
-        if annotator.next.id == int(request.form['item_id']):
+        if bracket.current_phase() != PHASE_INITIAL or annotator.next is None:
+            return
+        if annotator.next.id == item_id:
+            if annotator.project_id == annotator.next_id:
+                annotator.update_next(None)
+                db.session.commit()
+                return
             annotator.ignore.append(annotator.next)
             if request.form['action'] == 'Done':
                 annotator.next.viewed.append(annotator)
@@ -173,7 +254,7 @@ def login(secret):
     return redirect(url_for('index'))
 
 @app.route('/welcome/')
-@requires_open(redirect_to='index')
+@requires_initial_phase(redirect_to='index')
 @requires_active_annotator(redirect_to='index')
 def welcome():
     return render_template(
@@ -181,11 +262,13 @@ def welcome():
     )
 
 @app.route('/welcome/done', methods=['POST'])
-@requires_open(redirect_to='index')
+@requires_initial_phase(redirect_to='index')
 @requires_active_annotator(redirect_to='index')
 def welcome_done():
     def tx():
         annotator = get_current_annotator()
+        if bracket.current_phase() != PHASE_INITIAL:
+            return
         if request.form['action'] == 'Done':
             annotator.read_welcome = True
         db.session.commit()
@@ -193,7 +276,7 @@ def welcome_done():
     return redirect(url_for('index'))
 
 @app.route('/welcome/instructions/')
-@requires_open(redirect_to='index')
+@requires_initial_phase(redirect_to='index')
 @requires_active_annotator(redirect_to='index')
 def welcome_instructions():
     return render_template(
@@ -212,6 +295,9 @@ def preferred_items(annotator):
     '''
     items = []
     ignored_ids = {i.id for i in annotator.ignore}
+
+    if annotator.project_id is not None:
+        ignored_ids.add(annotator.project_id)
 
     if ignored_ids:
         available_items = Item.query.filter(
