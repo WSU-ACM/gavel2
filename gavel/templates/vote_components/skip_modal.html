@@ -21,7 +21,7 @@
       button.classList.toggle('bg-fadedpurple', radioCount > 0);
       button.classList.toggle('md:bg-purple', radioCount > 0);
       button.classList.toggle('md:bg-lightgray', radioCount < 1);
-      button.type = radioCount > 0 ? 'submit' : 'button';
+      button.disabled = radioCount < 1;
 
     }
   </script>
@@ -29,15 +29,16 @@
     <div class="fixed bottom-0 bg-white md:flex md:bottom-auto md:w-44 z-500 flex-wrap md:rounded-8 cursor-default">
       <div class="bg-cross hidden md:block md:absolute top-2.4 right-2.4 cursor-pointer h-1.2 w-1.2" onclick="toggleSkip(false)"></div>
       <div class="md:m-2.4 m-1.6">
-        <h2 class="pb-1.6 text-18 md:pr-2.4">I need to skip the <span class="text-indigo font-medium">current project</span> because:</h2>
+        <h2 class="pb-.8 text-18 md:pr-2.4">Why can’t you review the <span class="text-indigo font-medium">current project</span>?</h2>
+        <p class="pb-1.6 text-14">After you skip it, this project will not return to your review queue.</p>
         <div id="placeholderRadioForm">
           <label class="inline-flex items-center mb-1.6 pointer">
             <input form="skipForm" type="radio" class="form-radio border-purple border-2 text-purple h-3.2 w-3.2 md:h-2.4 md:w-2.4 pointer" id="skipRadioOne" value="SkipAbsent" name="action" onclick="setSkips()">
-            <span class="ml-2 text-14">They are not present for judging.</span>
+            <span class="ml-2 text-14">The project team is not present.</span>
           </label>
           <label class="inline-flex items-center mb-1.6 pointer">
             <input form="skipForm" type="radio" class="form-radio border-purple border-2 text-purple h-3.2 w-3.2 md:h-2.4 md:w-2.4 pointer" id="skipRadioTwo" value="SkipBusy" name="action" onclick="setSkips()">
-            <span class="ml-2 text-14">They are currently occupied with presenting to another judge.</span>
+            <span class="ml-2 text-14">The project team is presenting to another participant.</span>
           </label>
         </div>
       </div>
@@ -48,7 +49,7 @@
         </div>
         <div class="w-1/2 md:w-auto text-center flex justify-around md:justify-end md:text-white">
           <form action="{{ action }}" method="post" class="h-full w-full flex items-center justify-around text-12 center uppercase text-indigo" id="skipForm">
-            <button id="modalSkipButton" class="w-full h-full md:h-4 md:bg-lightgray pointer md:rounded md:px-1.4" type="submit"><a class="uppercase text-lightgray text-bold md:text-white" id="modalSkipText" style="margin: 0;">CONFIRM SKIP</a></button>
+            <button id="modalSkipButton" class="w-full h-full md:h-4 md:bg-lightgray pointer md:rounded md:px-1.4" type="submit" disabled><span class="uppercase text-lightgray text-bold md:text-white" id="modalSkipText">SKIP PROJECT</span></button>
             {% if prev and next %}
               <input type="hidden" name="prev_id" value="{{ prev.id }}">
               <input type="hidden" name="next_id" value="{{ next.id }}">

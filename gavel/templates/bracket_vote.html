@@ -3,15 +3,15 @@
 {% block content %}
 <div class="container py-3 md:py-6">
   <div class="max-w-5xl mx-auto">
-    <p class="uppercase text-indigo text-12 font-medium">Live elimination bracket</p>
+    <p class="uppercase text-indigo text-12 font-medium">Participant-voted elimination bracket</p>
     {% if tournament and tournament.champion %}
       <h1 class="text-24 md:text-32 mt-.8">{{ tournament.champion.name }} wins!</h1>
     {% elif not match %}
       <h1 class="text-24 md:text-32 mt-.8">Waiting for the next matchup</h1>
-      <p class="text-gray mt-1.2">This page will update when the organizer opens voting.</p>
+      <p class="text-gray mt-1.2">Keep this page open. It will update when the hackathon organizers open the next participant vote.</p>
     {% else %}
       <h1 class="text-24 md:text-32 mt-.8">Round {{ match.round_number }}</h1>
-      <p class="text-gray mt-.8">Review both projects, then choose one. Your ballot cannot be changed.</p>
+      <p class="text-gray mt-.8">Compare both projects using the hackathon criteria, then choose the stronger one. You cannot change your vote after submitting it.</p>
       <div class="flex flex-col md:flex-row md:-mx-1.2 mt-2.4">
         {% for item in (match.item_a, match.item_b) %}
           <div class="md:w-1/2 md:mx-1.2 mb-2.4 p-1.6 border border-lightgray rounded bg-white">
@@ -21,16 +21,16 @@
                 <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="match_id" value="{{ match.id }}">
                 <input type="hidden" name="item_id" value="{{ item.id }}">
-                <button class="w-full h-4 bg-indigo text-white uppercase rounded" type="submit">Vote for {{ item.name }}</button>
+                <button class="w-full h-4 bg-indigo text-white uppercase rounded" type="submit">Submit vote for {{ item.name }}</button>
               </form>
             {% endif %}
           </div>
         {% endfor %}
       </div>
       {% if existing_vote %}
-        <p class="p-1.2 bg-lightblue text-white rounded">Your vote has been recorded. Waiting for the organizer to close this matchup.</p>
+        <p class="p-1.2 bg-lightblue text-white rounded">Your vote has been recorded and cannot be changed. This page will update when the organizers close the matchup.</p>
       {% elif not eligible %}
-        <p class="p-1.2 bg-lightgray rounded">Members of either presenting team cannot vote in this matchup.</p>
+        <p class="p-1.2 bg-lightgray rounded">You cannot vote in this matchup because your team’s project is competing.</p>
       {% endif %}
     {% endif %}
   </div>

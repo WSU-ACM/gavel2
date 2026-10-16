@@ -45,9 +45,16 @@ def requires_active_annotator(redirect_to):
 def index():
     annotator = get_current_annotator()
     if annotator is None:
+        invalid_link = request.args.get('invalid_link') == '1'
+        message = (
+            'This participant link is invalid. Ask a hackathon organizer for a new link.'
+            if invalid_link else settings.LOGGED_OUT_MESSAGE
+        )
         return render_template(
             'logged_out.html',
-            content=utils.render_markdown(settings.LOGGED_OUT_MESSAGE)
+            content=utils.render_markdown(message),
+            heading='Invalid participant link' if invalid_link else 'Sign in to Gavel',
+            page_title='Invalid Link' if invalid_link else 'Sign In',
         )
     else:
         phase = bracket.current_phase()
@@ -66,24 +73,32 @@ def index():
                 )
             return render_template(
                 'closed.html',
-                content=utils.render_markdown(settings.CLOSED_MESSAGE)
+                content=utils.render_markdown(settings.CLOSED_MESSAGE),
+                heading='Hackathon voting is closed',
+                page_title='Voting Closed',
             )
         if not annotator.effectively_active and not annotator.stop_next:
             return render_template(
                 'disabled.html',
-                content=utils.render_markdown(settings.DISABLED_MESSAGE)
+                content=utils.render_markdown(settings.DISABLED_MESSAGE),
+                heading='Voting access paused',
+                page_title='Access Paused',
             )
         if not annotator.effectively_active and annotator.stop_next:
             return render_template(
                 'closed.html',
-                content=utils.render_markdown(settings.CLOSING_MESSAGE)
+                content=utils.render_markdown(settings.CLOSING_MESSAGE),
+                heading='Hackathon voting is ending',
+                page_title='Voting Ending',
             )
         if annotator.project_id is None:
             return render_template(
                 'disabled.html',
                 content=utils.render_markdown(
-                    'Your account has not been assigned to a project. Please contact an organizer.'
+                    'Your participant account is not linked to a project yet. Ask a hackathon organizer for help.'
                 ),
+                heading='Project assignment needed',
+                page_title='Project Assignment Needed',
             )
         if phase == PHASE_BRACKET:
             tournament = bracket.active_tournament()
@@ -133,7 +148,7 @@ def vote():
         prev_id = int(request.form.get('prev_id', ''))
         next_id = int(request.form.get('next_id', ''))
     except ValueError:
-        return utils.user_error('Invalid voting assignment.')
+        return utils.user_error('This project comparison is no longer current. Return to voting to load your current projects.')
 
     def tx():
         voting_setting = None
@@ -188,7 +203,7 @@ def report():
     try:
         next_id = int(request.form.get('next_id', ''))
     except ValueError:
-        return utils.user_error('Invalid project assignment.')
+        return utils.user_error('This project is no longer your current assignment. Return to voting to load the current project.')
 
     def tx():
         annotator = get_current_annotator()
@@ -216,7 +231,7 @@ def begin():
     try:
         item_id = int(request.form.get('item_id', ''))
     except ValueError:
-        return utils.user_error('Invalid project assignment.')
+        return utils.user_error('This project is no longer your current assignment. Return to voting to load the current project.')
 
     def tx():
         annotator = get_current_annotator()
@@ -255,6 +270,7 @@ def login(secret):
     if annotator is None:
         session.pop(ANNOTATOR_ID, None)
         session.modified = True
+        return redirect(url_for('index', invalid_link='1'))
     else:
         session[ANNOTATOR_ID] = annotator.id
     return redirect(url_for('index'))
@@ -264,18 +280,22 @@ def login(secret):
 @requires_active_annotator(redirect_to='index')
 def welcome():
     return render_template(
-        'welcome.html'
+        'welcome.html',
+        content=utils.render_markdown(settings.WELCOME_MESSAGE),
     )
 
 @app.route('/welcome/done', methods=['POST'])
 @requires_initial_phase(redirect_to='index')
 @requires_active_annotator(redirect_to='index')
 def welcome_done():
+    if request.form.get('acknowledged') != 'yes':
+        return redirect(url_for('welcome_instructions'))
+
     def tx():
         annotator = get_current_annotator()
         if bracket.current_phase() != PHASE_INITIAL:
             return
-        if request.form['action'] == 'Done':
+        if request.form.get('action') == 'Done':
             annotator.read_welcome = True
         db.session.commit()
     with_retries(tx)

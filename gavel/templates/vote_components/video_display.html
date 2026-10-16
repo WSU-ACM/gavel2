@@ -13,8 +13,6 @@
     ? "vimeo"
     : "none";
 
-    console.log(vimeoMatch, youtubeMatch, matchType)
-
     switch(matchType) {
       case("youtube"): {
         return `<iframe src="https://www.youtube.com/embed/${youtubeMatch[2]}?autoplay=0&modestbranding=1" frameborder="0" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`
@@ -30,13 +28,12 @@
 
   function generateVideoView(url) {
     const source = generateSource(url);
-    console.log(source)
     return !!source
     ? `<div class="videoWrapper pb-1.2">
         ${source}
       </div>
       `
-    : ``
+    : `<p class="text-12 md:text-14 pb-1.2">This video cannot be embedded. Use the link below to open it.</p>`
   }
 
   window.addEventListener("DOMContentLoaded", () => {

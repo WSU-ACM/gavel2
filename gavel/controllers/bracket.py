@@ -67,7 +67,7 @@ def bracket_vote():
         match_id = int(request.form.get('match_id', ''))
         item_id = int(request.form.get('item_id', ''))
     except ValueError:
-        return utils.user_error('Invalid bracket ballot.')
+        return utils.user_error('This ballot could not be submitted. Return to the bracket and vote in the current matchup.')
 
     try:
         def tx():

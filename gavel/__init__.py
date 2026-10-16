@@ -84,7 +84,7 @@ assets.register(bundles)
 def inject_context():
     return dict(
       virtual=settings.VIRTUAL_EVENT,
-      finished_button_text=str("Finish Review" if settings.VIRTUAL_EVENT else "Done With Visit"),
+      finished_button_text=str("Finish review" if settings.VIRTUAL_EVENT else "Done with visit"),
       debug_state=settings.DEBUG,
     )
 

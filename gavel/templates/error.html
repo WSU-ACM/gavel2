@@ -4,7 +4,7 @@
 <div class="item">
   <div class="container">
     <div class="large-header">
-      <h1 class="page-title">Uh oh.</h1>
+      <h1 class="page-title">Gavel could not complete that request</h1>
       <p class="text-16">{{ message }}</p>
     </div>
   </div>
@@ -12,9 +12,11 @@
 
 <div class="item" style="padding-bottom: 24px; padding-top: 70px;">
   <div class="container bottom-button">
-    <form>
-      <button type="button" class="bg-lightblue h-4.8 rounded text-20 text-white w-16 md:w-full md:flex-grow" onclick="history.back()"> Go Back </button>
-    </form>
+    {% if request.path.startswith('/admin') %}
+      <a class="bg-lightblue h-4.8 rounded text-20 text-white w-16 md:w-full md:flex-grow flex items-center justify-around" href="{{ url_for('admin') }}">Return to admin dashboard</a>
+    {% else %}
+      <a class="bg-lightblue h-4.8 rounded text-20 text-white w-16 md:w-full md:flex-grow flex items-center justify-around" href="{{ url_for('index') }}">Return to participant voting</a>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

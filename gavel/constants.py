@@ -39,58 +39,55 @@ PHASE_CLOSED = 'closed'
 # Defaults
 # these can be overridden via the config file
 DEFAULT_WELCOME_MESSAGE = '''
-Welcome to Gavel.
+Welcome to hackathon voting.
 
-**Please read this important message carefully before continuing.**
+As a hackathon participant, you'll help rank projects by comparing them one at
+a time. Your first project gives you a starting point. After that, you'll
+compare each new project with the one you reviewed immediately before it.
 
-Gavel is a fully automated expo judging system that both tells you where to go
-and collects your votes.
+Use the criteria provided by the hackathon organizers and make each choice
+independently. Gavel combines your comparisons with those from other
+participants to produce the project rankings.
 
-The system is based on the model of pairwise comparison. You'll start off by
-looking at a single submission, and then for every submission after that,
-you'll decide whether it's better or worse than the one you looked at
-**immediately beforehand**.
+You will never be asked to vote on your own team's project. If your project is
+part of an elimination-bracket matchup, you will sit out that matchup.
 
-If at any point, you can't find a particular submission, you can click the
-'Skip' button and you will be assigned a new project. **Please don't skip
-unless absolutely necessary.**
-
-Gavel makes it simple for participants to submit votes, but please think hard
-before you vote. **Once you make a decision, you can't take it back**.
+Please consider each comparison carefully. **After you submit a choice, you
+cannot change it.**
 '''.strip()
 
-DEFAULT_EMAIL_SUBJECT = 'Welcome to Gavel!'
+DEFAULT_EMAIL_SUBJECT = 'Your Gavel participant voting link'
 
 DEFAULT_EMAIL_BODY = '''
 Hi {name},
 
-Welcome to Gavel, the online hackathon voting system. This email contains your
-magic link to the judging system.
+You're invited to vote on hackathon projects using Gavel. This personal link
+signs you in to your participant voting account:
 
-DO NOT SHARE this email with others, as it contains your personal magic link.
+{link}
 
-To access the system, visit {link}.
+Do not share this link. Anyone who has it can vote from your account.
 
-Once you're in, please take the time to read the welcome message and
-instructions before continuing.
+Before voting, please read the welcome message and instructions in Gavel. Ask a
+hackathon organizer if you have questions about the voting criteria or process.
 '''.strip()
 
 DEFAULT_CLOSED_MESSAGE = '''
-Gavel judging is currently closed. If judging is still happening in person, try refreshing the page.
+Hackathon voting is closed. No more choices can be submitted. Follow any next steps provided by the organizers.
 '''.strip()
 
 DEFAULT_CLOSING_MESSAGE = '''
-Gavel judging is in the process of shutting down. Please wait.
+Hackathon voting is ending. Your completed choices have been saved. Please wait for instructions from the organizers.
 '''.strip()
 
 DEFAULT_DISABLED_MESSAGE = '''
-Your account is currently disabled. Reload the page to try again.
+Your participant voting access is paused. Contact a hackathon organizer if you believe this is a mistake.
 '''.strip()
 
 DEFAULT_LOGGED_OUT_MESSAGE = '''
-You are currently logged out. Open your magic link to get started.
+You are signed out of participant voting. Open your personal Gavel link to sign in again, or ask a hackathon organizer for help.
 '''.strip()
 
 DEFAULT_WAIT_MESSAGE = '''
-Wow, you've visited all the projects presented in this expo. Thank you so much for your effort. From this point, follow any post-expo instructions event staff have provided for judges.
+You have reviewed every project currently available to you. Follow the organizers' instructions while you wait for the next stage of hackathon voting.
 '''.strip()

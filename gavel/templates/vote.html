@@ -16,15 +16,15 @@
   <div class="container">
     <div class="w-full flex justify-between items-center">
       <div>
-        <h2 class="text-indigo text-18 md:text-24 pb-.8 pt-1.6">Review the new Current Project.</h2>
-        <p class="text-gray text-12 md:text-14 pb-1.6">Click ‘{{ finished_button_text }}’ to select the better of the two projects.</p>
+        <h2 class="text-indigo text-18 md:text-24 pb-.8 pt-1.6">Review the current project</h2>
+        <p class="text-gray text-12 md:text-14 pb-1.6">Compare it with the previous project, then select “{{ finished_button_text }}” to choose the stronger one.</p>
       </div>
       <div class="hidden md:flex items-center">
-        <button class="bg-red bg-flag h-4 w-4.8 rounded m-.6" title="Report" type="button" id="reportbutton" onclick="toggleReport()"></button>
+        <button class="bg-red bg-flag h-4 w-4.8 rounded m-.6" title="Report project" aria-label="Report project" type="button" id="reportbutton" onclick="toggleReport()"></button>
         {% if not virtual %}
-        <button class="bg-purple bg-chevron h-4 w-4.8 rounded m-.6" title="Skip" type="button" id="skipButton" onclick="toggleSkip()"></button>
+        <button class="bg-purple bg-chevron h-4 w-4.8 rounded m-.6" title="Skip project" aria-label="Skip project" type="button" id="skipButton" onclick="toggleSkip()"></button>
         {% endif %}
-        <button class="bg-lightblue h-4 w-14.4 rounded flex-grow m-.6 text-white" title="Done" type="button" id="doneButton" onclick="toggleModal()">{{ finished_button_text }}</button>
+        <button class="bg-lightblue h-4 w-14.4 rounded flex-grow m-.6 text-white" title="{{ finished_button_text }}" type="button" id="doneButton" onclick="toggleModal()">{{ finished_button_text }}</button>
       </div>
     </div>
     <div class="flex justify-between flex-shrink-0 xl:flex-row flex-col pb-1.6 xl:-mx-2">
@@ -35,7 +35,7 @@
         {% endwith %}
       </div>
       <div class="flex-grow xl:max-w-1/2 xl:mx-2">
-        <p class="uppercase text-gray font-medium text-12 md:text-16 mb-1.2 border-b border-gray">LAST PROJECT YOU REVIEWED</p>
+        <p class="uppercase text-gray font-medium text-12 md:text-16 mb-1.2 border-b border-gray">PREVIOUS PROJECT</p>
         {% with item=prev %}
           {% include "_item.html" %}
         {% endwith %}
@@ -44,11 +44,11 @@
   </div>
 
   <div class="fixed md:hidden bottomPanel flex w-full flex-row inline-flex justify-between">
-    <button class="bg-red bg-flag h-4.8 w-6 rounded m-.6" title="Report" type="button" id="reportbutton" onclick="toggleReport()"></button>
+    <button class="bg-red bg-flag h-4.8 w-6 rounded m-.6" title="Report project" aria-label="Report project" type="button" id="reportbutton" onclick="toggleReport()"></button>
     {% if not virtual %}
-    <button class="skipButton m-.6" type="button" title="Skip" id="skipButton" onclick="toggleSkip()"></button>
+    <button class="skipButton m-.6" type="button" title="Skip project" aria-label="Skip project" id="skipButton" onclick="toggleSkip()"></button>
     {% endif %}
-    <button class="doneButton doneButtonText flex-grow m-.6" type="button" title="Done" id="doneButton" onclick="toggleModal()">{{ finished_button_text }}</button>
+    <button class="doneButton doneButtonText flex-grow m-.6" type="button" title="{{ finished_button_text }}" id="doneButton" onclick="toggleModal()">{{ finished_button_text }}</button>
   </div>
 
   {% with prev=prev, next=next %}

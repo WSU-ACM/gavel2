@@ -133,7 +133,7 @@ def active_tournament():
 
 def open_match(match_id):
     if current_phase() != PHASE_BRACKET:
-        raise ValueError('Bracket voting is not open.')
+        raise ValueError('Elimination-bracket voting is not open. Return to Gavel for the current voting stage.')
     tournament = active_tournament()
     if tournament is None:
         raise ValueError('There is no active bracket.')
@@ -154,15 +154,15 @@ def cast_vote(match_id, annotator_id, item_id):
     match = BracketMatch.query.filter_by(id=match_id).with_for_update().first()
     annotator = Annotator.query.filter_by(id=annotator_id).first()
     if match is None or match.status != 'open':
-        raise ValueError('That matchup is no longer open.')
+        raise ValueError('Voting for that matchup has closed. Return to the bracket for the current matchup.')
     if annotator is None or not annotator.effectively_active:
-        raise ValueError('This participant is not eligible to vote.')
+        raise ValueError('Your participant account is not eligible to vote in this matchup. Ask a hackathon organizer for help.')
     if item_id not in (match.item_a_id, match.item_b_id):
-        raise ValueError('The selected project is not in this matchup.')
+        raise ValueError('That project is not part of the current matchup. Return to the bracket and try again.')
     if annotator.project_id in (match.item_a_id, match.item_b_id):
-        raise ValueError('Presenting team members cannot vote in this matchup.')
+        raise ValueError("You cannot vote in this matchup because your team's project is competing.")
     if BracketVote.query.filter_by(match_id=match.id, annotator_id=annotator.id).first():
-        raise ValueError('You have already voted in this matchup.')
+        raise ValueError('Your vote was already recorded and cannot be changed.')
     vote = BracketVote(match=match, annotator=annotator, item_id=item_id)
     db.session.add(vote)
     mark_voting_started(voting_setting)

@@ -16,16 +16,16 @@
   <div class="container">
     <div class="w-full flex justify-between items-center">
       <div>
-        <h2 class="text-indigo text-18 md:text-24 pb-.8 pt-1.6">Review the new Current Project.</h2>
-        <p class="text-gray text-12 md:text-14 pb-1.6">Click ‘{{ finished_button_text }}’ to select the better of the two projects.</p>
+        <h2 class="text-indigo text-18 md:text-24 pb-.8 pt-1.6">Review your first project</h2>
+        <p class="text-gray text-12 md:text-14 pb-1.6">There is nothing to compare yet. Select “{{ finished_button_text }}” when you are ready to continue.</p>
       </div>
       <div class="hidden md:flex items-center">
-        <button class="bg-red bg-flag h-4 w-4.8 rounded m-.6" type="button" id="reportbutton" onclick="toggleReport()"></button>
+        <button class="bg-red bg-flag h-4 w-4.8 rounded m-.6" title="Report project" aria-label="Report project" type="button" id="reportbutton" onclick="toggleReport()"></button>
         {% if not virtual %}
-        <button class="bg-purple bg-chevron h-4 w-4.8 rounded m-.6" type="button" id="skipButton" onclick="toggleSkip()"></button>
+        <button class="bg-purple bg-chevron h-4 w-4.8 rounded m-.6" title="Skip project" aria-label="Skip project" type="button" id="skipButton" onclick="toggleSkip()"></button>
         {% endif %}
         <form action="/begin" method="post" class="flex-grow">
-          <button class="bg-lightblue h-4 w-14.4 rounded flex-grow m-.6 text-white" title="Done" type="submit" name="action" value="Done">
+          <button class="bg-lightblue h-4 w-14.4 rounded flex-grow m-.6 text-white" title="{{ finished_button_text }}" type="submit" name="action" value="Done">
             {{ finished_button_text }}
           </button>
           <input type="hidden" name="item_id" value="{{ item.id }}">
@@ -34,7 +34,7 @@
       </div>
     </div>
     <div class="w-full lg:w-2/3 xl:w-1/2">
-      <p class="uppercase text-indigo font-medium text-12 md:text-16 mb-1.2 border-b border-indigo">CURRENT PROJECT</p>
+      <p class="uppercase text-indigo font-medium text-12 md:text-16 mb-1.2 border-b border-indigo">FIRST PROJECT</p>
       <div class="item">
         {% with item=item %}
           {% include "_item.html" %}
@@ -44,12 +44,12 @@
   </div>
 
   <div class="fixed md:hidden bottomPanel flex w-full flex-row inline-flex justify-between">
-    <button class="bg-red bg-flag h-4.8 w-6 rounded m-.6" title="Report" type="button" onclick="toggleReport()"></button>
+    <button class="bg-red bg-flag h-4.8 w-6 rounded m-.6" title="Report project" aria-label="Report project" type="button" onclick="toggleReport()"></button>
     {% if not virtual %}
-    <button class="skipButton m-.6" title="Skip" type="button" onclick="toggleSkip()"></button>
+    <button class="skipButton m-.6" title="Skip project" aria-label="Skip project" type="button" onclick="toggleSkip()"></button>
     {% endif %}
     <form action="/begin" method="post" class="flex-grow">
-      <button class="doneButton doneButtonText w-full m-.6" title="Done" type="submit" name="action" value="Done">
+      <button class="doneButton doneButtonText w-full m-.6" title="{{ finished_button_text }}" type="submit" name="action" value="Done">
         {{ finished_button_text }}
       </button>
       <input type="hidden" name="item_id" value="{{ item.id }}">

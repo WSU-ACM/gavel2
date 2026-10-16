@@ -183,7 +183,7 @@ class ParticipantBracketTest(unittest.TestCase):
         )
 
         self.assertEqual(200, audience_response.status_code)
-        self.assertIn(b'Vote for Project', audience_response.data)
+        self.assertIn(b'Submit vote for Project', audience_response.data)
         self.assertEqual(200, admin_response.status_code)
         self.assertIn(b'Leaderboard and bracket', admin_response.data)
 
