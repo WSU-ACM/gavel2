@@ -31,7 +31,7 @@ def _match_data(match):
     eligible_voters = 0
     if match.ready:
         eligible_voters = sum(
-            1 for annotator in Annotator.query.filter_by(active=True).all()
+            1 for annotator in Annotator.query.filter(Annotator.effectively_active).all()
             if annotator.project_id not in (match.item_a_id, match.item_b_id)
         )
     return {
@@ -97,7 +97,7 @@ def bracket_status():
             match_id=current_match.id,
             annotator_id=annotator.id,
         ).first() is not None
-        eligible = annotator.project_id not in (
+        eligible = annotator.effectively_active and annotator.project_id not in (
             current_match.item_a_id,
             current_match.item_b_id,
         )

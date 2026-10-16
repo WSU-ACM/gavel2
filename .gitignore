@@ -10,6 +10,13 @@ env/
 !.elasticbeanstalk/*.cfg.yml
 !.elasticbeanstalk/*.global.yml
 venv/
+.python/
+.local/
+.redis.*
+.gavel.log
+.celery.log
+.gavel.pid
+.celery.pid
 
 .env*
 !.env.example

@@ -20,6 +20,7 @@ from gavel.models import (
     TournamentEntry,
     db,
 )
+from gavel.voting_state import lock_voting_state, mark_voting_started
 
 
 def current_phase():
@@ -37,7 +38,7 @@ def ranked_items():
         counts[decision.winner_id] = counts.get(decision.winner_id, 0) + 1
         counts[decision.loser_id] = counts.get(decision.loser_id, 0) + 1
 
-    items = Item.query.filter(Item.active == True).order_by(  # noqa: E712
+    items = Item.query.filter(Item.effectively_active).order_by(
         Item.mu.desc(),
         Item.sigma_sq.asc(),
         Item.id.asc(),
@@ -71,7 +72,10 @@ def create_tournament(size):
         raise ValueError('The event is not ready to create a bracket.')
     if Tournament.query.filter_by(status='active').first() is not None:
         raise ValueError('An active bracket already exists.')
-    unassigned = Annotator.query.filter_by(active=True, project_id=None).count()
+    unassigned = Annotator.query.filter(
+        Annotator.effectively_active,
+        Annotator.project_id.is_(None),
+    ).count()
     if unassigned:
         raise ValueError(
             'Assign a project to every active participant before creating the bracket.'
@@ -146,11 +150,12 @@ def open_match(match_id):
 def cast_vote(match_id, annotator_id, item_id):
     if current_phase() != PHASE_BRACKET:
         raise ValueError('Bracket voting is not open.')
+    voting_setting = lock_voting_state()
     match = BracketMatch.query.filter_by(id=match_id).with_for_update().first()
     annotator = Annotator.query.filter_by(id=annotator_id).first()
     if match is None or match.status != 'open':
         raise ValueError('That matchup is no longer open.')
-    if annotator is None or not annotator.active:
+    if annotator is None or not annotator.effectively_active:
         raise ValueError('This participant is not eligible to vote.')
     if item_id not in (match.item_a_id, match.item_b_id):
         raise ValueError('The selected project is not in this matchup.')
@@ -160,6 +165,7 @@ def cast_vote(match_id, annotator_id, item_id):
         raise ValueError('You have already voted in this matchup.')
     vote = BracketVote(match=match, annotator=annotator, item_id=item_id)
     db.session.add(vote)
+    mark_voting_started(voting_setting)
     return vote
 
 

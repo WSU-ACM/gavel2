@@ -23,7 +23,7 @@
 
   <div class="flex flex-wrap flex-row pb-1.6">
     {% if item.submission_reference and (item.submission_reference.startswith('http://') or item.submission_reference.startswith('https://')) %}
-      <a class="bg-indigo rounded text-white text-center py-.8 px-1.2 text-14 mr-.8" href="{{ item.submission_reference }}" target="_blank" rel="noopener noreferrer">View on OrganizerHQ</a>
+      <a class="bg-indigo rounded text-white text-center py-.8 px-1.2 text-14 mr-.8" href="{{ item.submission_reference }}" target="_blank" rel="noopener noreferrer">View submission</a>
     {% endif %}
     {% if virtual and item.submission_website and (item.submission_website.startswith('http://') or item.submission_website.startswith('https://')) %}
       <a class="bg-indigo rounded text-white text-center py-.8 px-1.2 text-14" href="{{ item.submission_website }}" target="_blank" rel="noopener noreferrer">Project Site</a>

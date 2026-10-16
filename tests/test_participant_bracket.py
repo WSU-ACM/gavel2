@@ -17,9 +17,14 @@ os.environ['SEND_STATS'] = 'false'
 
 from gavel import app
 import gavel.bracket as bracket
-from gavel.constants import PHASE_INITIAL, SETTING_PHASE
+from gavel.constants import (
+    PHASE_INITIAL,
+    SETTING_PHASE,
+    SETTING_TRUE,
+    SETTING_VOTING_STARTED,
+)
 from gavel.controllers.judge import preferred_items
-from gavel.models import Annotator, BracketMatch, BracketVote, Item, Setting, db
+from gavel.models import Annotator, BracketMatch, BracketVote, Decision, Item, Setting, db
 
 
 class ParticipantBracketTest(unittest.TestCase):
@@ -109,6 +114,32 @@ class ParticipantBracketTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             bracket.cast_vote(match.id, voter.id, items[1].id)
         self.assertEqual(1, BracketVote.query.count())
+        self.assertEqual(SETTING_TRUE, Setting.value_of(SETTING_VOTING_STARTED))
+
+    def test_initial_vote_sets_sticky_voting_state(self):
+        items = [self.make_item('Project%d' % seed) for seed in range(1, 4)]
+        participant = Annotator('Voter', 'voter@example.com', '')
+        participant.project = items[2]
+        participant.prev = items[0]
+        participant.next = items[1]
+        participant.read_welcome = True
+        db.session.add(participant)
+        db.session.commit()
+
+        client = app.test_client()
+        with client.session_transaction() as client_session:
+            client_session['annotator_id'] = participant.id
+            client_session['_csrf_token'] = 'token'
+        response = client.post('/vote', data={
+            '_csrf_token': 'token',
+            'prev_id': items[0].id,
+            'next_id': items[1].id,
+            'action': 'Current',
+        })
+
+        self.assertEqual(302, response.status_code)
+        self.assertEqual(1, Decision.query.count())
+        self.assertEqual(SETTING_TRUE, Setting.value_of(SETTING_VOTING_STARTED))
 
     def test_tie_requires_an_admin_winner_and_completes_final(self):
         items = [self.make_item('Project%d' % seed, 10 - seed) for seed in range(1, 3)]

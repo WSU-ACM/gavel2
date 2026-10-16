@@ -2,6 +2,7 @@ from gavel.models import db
 import gavel.crowd_bt as crowd_bt
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.orm import validates
+from sqlalchemy.ext.hybrid import hybrid_property
 from datetime import datetime
 import gavel.settings as settings
 
@@ -14,6 +15,15 @@ view_table = db.Table('view',
 
 
 class Item(BaseModel):
+    __table_args__ = (
+        db.CheckConstraint(
+            '(external_id IS NULL) = (managed_source IS NULL)',
+            name='ck_item_integration_identity',
+        ),
+        db.Index('ix_item_managed_source_external_id', 'managed_source', 'external_id'),
+        db.Index('ix_item_managed_source_roster_active', 'managed_source', 'roster_active'),
+    )
+
     id = db.Column(db.Integer, primary_key=True, nullable=False)
     name = db.Column(db.Text, nullable=False)
     location = db.Column(db.Text, nullable=False)
@@ -29,6 +39,9 @@ class Item(BaseModel):
     submission_website = db.Column(db.Text, nullable=True)
 
     active = db.Column(db.Boolean, default=True, nullable=False)
+    external_id = db.Column(db.String(255), unique=True, nullable=True)
+    managed_source = db.Column(db.String(64), nullable=True)
+    roster_active = db.Column(db.Boolean, nullable=True)
     viewed = db.relationship('Annotator', secondary=view_table)
     members = db.relationship(
         'Annotator',
@@ -51,6 +64,8 @@ class Item(BaseModel):
         "submission_website",
         "tagline",
         "active",
+        "roster_active",
+        "effectively_active",
         "seen",
         "prioritized",
         "mu",
@@ -59,6 +74,16 @@ class Item(BaseModel):
     ]
 
     relations_keys = ("viewed", "members", "flags")
+
+    @hybrid_property
+    def effectively_active(self):
+        return self.active and self.roster_active is not False
+
+    @effectively_active.expression
+    def effectively_active(cls):
+        return cls.active.is_(True) & (
+            cls.roster_active.is_(None) | cls.roster_active.is_(True)
+        )
 
     def __init__(self, name, location, description, tagline="N/A", video_reference="N/A", submission_reference="N/A", submission_website="N/A"):
         self.name = name

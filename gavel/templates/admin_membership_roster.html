@@ -1,0 +1,40 @@
+{% extends "admin_layout.html" %}
+{% block title %}Membership Roster Import{% endblock %}
+{% block content %}
+<main style="max-width: 760px; margin: 48px auto; padding: 32px; background: white; border-radius: 8px;">
+  <p><a href="{{ url_for('admin') }}">Back to dashboard</a></p>
+  <h1>Membership roster import</h1>
+  <p>Upload one complete project roster and one complete participant roster. The files are validated together and saved in one transaction.</p>
+
+  {% if validation_error %}
+  <div style="padding: 16px; margin: 20px 0; background: #fff1f0; border: 1px solid #d64545;">
+    <strong>Import rejected:</strong> {{ validation_error.code }}
+    {% if validation_error.row %} at row {{ validation_error.row }}{% endif %}
+    {% if validation_error.field %} ({{ validation_error.field }}){% endif %}.
+    No roster changes were saved.
+  </div>
+  {% endif %}
+
+  {% if system_error %}
+  <div style="padding: 16px; margin: 20px 0; background: #fff1f0; border: 1px solid #d64545;">
+    The import could not be saved because of a database or application error. No roster changes were committed.
+  </div>
+  {% endif %}
+
+  <form action="{{ url_for('membership_roster_import') }}" method="post" enctype="multipart/form-data">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+    <div style="margin: 24px 0;">
+      <label for="projects_file"><strong>projects.csv</strong></label><br>
+      <code>external_id,name,description,submission_url</code><br>
+      <input id="projects_file" name="projects_file" type="file" accept=".csv,text/csv" required style="margin-top: 8px;">
+    </div>
+    <div style="margin: 24px 0;">
+      <label for="participants_file"><strong>participants.csv</strong></label><br>
+      <code>external_id,name,email,description,project_external_id</code><br>
+      <input id="participants_file" name="participants_file" type="file" accept=".csv,text/csv" required style="margin-top: 8px;">
+    </div>
+    <p>Maximum 2 MiB and 10,000 data rows per file.</p>
+    <button type="submit" class="bg-indigo text-white rounded" style="padding: 12px 20px;">Validate and import roster</button>
+  </form>
+</main>
+{% endblock %}

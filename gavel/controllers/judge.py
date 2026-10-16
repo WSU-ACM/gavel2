@@ -5,6 +5,7 @@ import gavel.settings as settings
 import gavel.utils as utils
 import gavel.crowd_bt as crowd_bt
 import gavel.bracket as bracket
+from gavel.voting_state import lock_voting_state, mark_voting_started
 from flask import (
     redirect,
     render_template,
@@ -32,7 +33,7 @@ def requires_active_annotator(redirect_to):
         @wraps(f)
         def decorated(*args, **kwargs):
             annotator = get_current_annotator()
-            if annotator is None or not annotator.active:
+            if annotator is None or not annotator.effectively_active:
                 return redirect(url_for(redirect_to))
             else:
                 return f(*args, **kwargs)
@@ -67,12 +68,12 @@ def index():
                 'closed.html',
                 content=utils.render_markdown(settings.CLOSED_MESSAGE)
             )
-        if not annotator.active and not annotator.stop_next:
+        if not annotator.effectively_active and not annotator.stop_next:
             return render_template(
                 'disabled.html',
                 content=utils.render_markdown(settings.DISABLED_MESSAGE)
             )
-        if not annotator.active and annotator.stop_next:
+        if not annotator.effectively_active and annotator.stop_next:
             return render_template(
                 'closed.html',
                 content=utils.render_markdown(settings.CLOSING_MESSAGE)
@@ -135,6 +136,9 @@ def vote():
         return utils.user_error('Invalid voting assignment.')
 
     def tx():
+        voting_setting = None
+        if request.form.get('action') in ('Previous', 'Current'):
+            voting_setting = lock_voting_state()
         annotator = get_current_annotator()
         if bracket.current_phase() != PHASE_INITIAL:
             return
@@ -154,11 +158,13 @@ def vote():
                     db.session.add(flag)
             else:
                 # ignore things that were deactivated in the middle of judging
-                if annotator.prev.active and annotator.next.active:
+                if annotator.prev.effectively_active and annotator.next.effectively_active:
                     if request.form['action'] == 'Previous':
+                        mark_voting_started(voting_setting)
                         perform_vote(annotator, next_won=False)
                         decision = Decision(annotator, winner=annotator.prev, loser=annotator.next)
                     elif request.form['action'] == 'Current':
+                        mark_voting_started(voting_setting)
                         perform_vote(annotator, next_won=True)
                         decision = Decision(annotator, winner=annotator.next, loser=annotator.prev)
                     else:
@@ -301,17 +307,17 @@ def preferred_items(annotator):
 
     if ignored_ids:
         available_items = Item.query.filter(
-            (Item.active == True) & (~Item.id.in_(ignored_ids))
+            Item.effectively_active & (~Item.id.in_(ignored_ids))
         ).all()
     else:
-        available_items = Item.query.filter(Item.active == True).all()
+        available_items = Item.query.filter(Item.effectively_active).all()
 
     prioritized_items = [i for i in available_items if i.prioritized]
 
     items = prioritized_items if prioritized_items else available_items
 
     annotators = Annotator.query.filter(
-        (Annotator.active == True) & (Annotator.next != None) & (Annotator.updated != None)
+        Annotator.effectively_active & (Annotator.next != None) & (Annotator.updated != None)
     ).all()
     busy = {i.next.id for i in annotators if \
         (datetime.utcnow() - i.updated).total_seconds() < settings.TIMEOUT * 60}

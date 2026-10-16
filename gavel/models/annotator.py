@@ -4,6 +4,7 @@ import gavel.utils as utils
 import gavel.crowd_bt as crowd_bt
 from sqlalchemy.orm.exc import NoResultFound
 from datetime import datetime
+from sqlalchemy.ext.hybrid import hybrid_property
 
 from gavel.models._basemodel import BaseModel
 
@@ -14,10 +15,22 @@ ignore_table = db.Table('ignore',
 
 
 class Annotator(BaseModel):
+    __table_args__ = (
+        db.CheckConstraint(
+            '(external_id IS NULL) = (managed_source IS NULL)',
+            name='ck_annotator_integration_identity',
+        ),
+        db.Index('ix_annotator_managed_source_external_id', 'managed_source', 'external_id'),
+        db.Index('ix_annotator_managed_source_roster_active', 'managed_source', 'roster_active'),
+    )
+
     id = db.Column(db.Integer, primary_key=True, nullable=False)
     name = db.Column(db.String(120), nullable=False)
     email = db.Column(db.String(120), nullable=False)
     active = db.Column(db.Boolean, default=True, nullable=False)
+    external_id = db.Column(db.String(255), unique=True, nullable=True)
+    managed_source = db.Column(db.String(64), nullable=True)
+    roster_active = db.Column(db.Boolean, nullable=True)
     stop_next = db.Column(db.Boolean, default=False, nullable=False)
     read_welcome = db.Column(db.Boolean, default=False, nullable=False)
     description = db.Column(db.Text, nullable=False)
@@ -42,6 +55,8 @@ class Annotator(BaseModel):
     _default_fields = ["name",
                        "email",
                        "active",
+                       "roster_active",
+                       "effectively_active",
                        "stop_next",
                        "read_welcome",
                        "description",
@@ -53,6 +68,16 @@ class Annotator(BaseModel):
     _secret_fields = ["secret"]
 
     relations_keys = ("next", "prev", "project", "ignore")
+
+    @hybrid_property
+    def effectively_active(self):
+        return self.active and self.roster_active is not False
+
+    @effectively_active.expression
+    def effectively_active(cls):
+        return cls.active.is_(True) & (
+            cls.roster_active.is_(None) | cls.roster_active.is_(True)
+        )
 
     def __init__(self, name, email, description):
         self.name = name

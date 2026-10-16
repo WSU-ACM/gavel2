@@ -61,6 +61,11 @@ c = Config(CONFIG_FILE)
 # 'config.vagrant.yaml'
 BASE_URL =            c.get('base_url',        'BASE_URL')
 ADMIN_PASSWORD =      c.get('admin_password',  'ADMIN_PASSWORD')
+MEMBERSHIP_LINK_EXPORT_TOKEN = c.get(
+    'membership_link_export_token',
+    'MEMBERSHIP_LINK_EXPORT_TOKEN',
+    default='',
+)
 DB_URI =              c.get('db_uri',          ['DATABASE_URL', 'DB_URI'], default='postgresql://localhost/gavel')
 BROKER_URI =          c.get('broker_uri',      ['REDIS_URL', 'BROKER_URI'], default='redis://localhost:6379/0')
 SECRET_KEY =          c.get('secret_key',      'SECRET_KEY')

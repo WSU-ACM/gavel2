@@ -27,6 +27,7 @@ SESSION_UPDATED = 'session.updated'
 SETTING_CLOSED = 'closed' # boolean
 SETTING_STOP_QUEUE = 'queued' # boolean
 SETTING_PHASE = 'phase'
+SETTING_VOTING_STARTED = 'voting_started'
 # values
 SETTING_TRUE = 'true'
 SETTING_FALSE = 'false'

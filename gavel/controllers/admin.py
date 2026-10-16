@@ -19,6 +19,17 @@ from gavel import JSON
 from flask_json import json_response, as_json
 from collections import defaultdict
 from urllib.parse import urlparse
+from gavel.services.invitation_delivery import (
+  enqueue_invitations,
+  invitation_can_retry,
+  queue_invitation,
+)
+from gavel.services.membership_roster import (
+  RosterValidationError,
+  import_snapshot,
+  parse_snapshot,
+  read_upload,
+)
 
 socket = socketio
 from sqlalchemy import event
@@ -134,6 +145,87 @@ def admin():
   )
 
 
+@app.route('/admin/membership-roster/', methods=['GET'])
+@utils.requires_auth
+def membership_roster():
+  return render_template('admin_membership_roster.html')
+
+
+@app.route('/admin/membership-roster/import', methods=['POST'])
+@utils.requires_auth
+def membership_roster_import():
+  try:
+    projects_upload = request.files.get('projects_file')
+    participants_upload = request.files.get('participants_file')
+    if projects_upload is None:
+      raise RosterValidationError('missing_file', field='projects_file')
+    if participants_upload is None:
+      raise RosterValidationError('missing_file', field='participants_file')
+    snapshot = parse_snapshot(
+      read_upload(projects_upload),
+      read_upload(participants_upload),
+    )
+    result = import_snapshot(snapshot)
+  except RosterValidationError as error:
+    db.session.rollback()
+    return render_template(
+      'admin_membership_roster.html',
+      validation_error=error,
+    ), 400
+  except Exception:
+    db.session.rollback()
+    return render_template(
+      'admin_membership_roster.html',
+      system_error=True,
+    ), 500
+
+  pending_delivery_ids = [
+    delivery.id
+    for delivery in InvitationDelivery.query.filter_by(status='pending').all()
+  ]
+  enqueue_invitations(pending_delivery_ids)
+  return redirect(url_for(
+    'membership_roster_result',
+    import_id=result['import_id'],
+  ))
+
+
+@app.route('/admin/membership-roster/import/<int:import_id>', methods=['GET'])
+@utils.requires_auth
+def membership_roster_result(import_id):
+  roster_import = MembershipRosterImport.query.get(import_id)
+  if roster_import is None:
+    return utils.user_error('Membership roster import not found.')
+  deliveries = InvitationDelivery.query.filter_by(import_id=import_id).all()
+  invitation_counts = {
+    'pending': sum(d.status in ('pending', 'sending', 'retrying') for d in deliveries),
+    'sent': sum(d.status == 'sent' for d in deliveries),
+    'failed': sum(d.status == 'failed' for d in deliveries),
+  }
+  return render_template(
+    'admin_membership_roster_result.html',
+    roster_import=roster_import,
+    deliveries=deliveries,
+    retryable_deliveries=[d for d in deliveries if invitation_can_retry(d)],
+    invitation_counts=invitation_counts,
+  )
+
+
+@app.route('/admin/membership-roster/invitation/<int:delivery_id>/retry', methods=['POST'])
+@utils.requires_auth
+def membership_roster_invitation_retry(delivery_id):
+  delivery = InvitationDelivery.query.get(delivery_id)
+  if delivery is None:
+    return utils.user_error('Invitation delivery not found.')
+  if not invitation_can_retry(delivery):
+    return utils.user_error('This invitation delivery cannot be retried yet.')
+  import_id = delivery.import_id
+  queue_invitation(delivery)
+  if import_id is not None:
+    return redirect(url_for('membership_roster_result', import_id=import_id))
+  return redirect(url_for('annotator_detail', annotator_id=delivery.annotator_id))
+
+
 @app.route('/admin/items')
 @utils.requires_auth
 def admin_items():
@@ -173,6 +265,8 @@ def admin_items():
     try:
       item_dumped = item_schema.dump(it)
       item_dumped.update({
+        'active': it.effectively_active,
+        'roster_active': it.roster_active,
         'votes': item_counts.get(it.id, 0),
         'skipped': list(set(skipped.get(it.id, [])))
       })
@@ -251,6 +345,8 @@ def admin_annotators():
     try:
       annotator_dumped = annotator_schema.dump(an)
       annotator_dumped.update({
+        'active': an.effectively_active,
+        'roster_active': an.roster_active,
         'votes': counts.get(an.id, 0)
       })
       annotators_dumped.append(annotator_dumped)
@@ -342,7 +438,7 @@ def item():
             return utils.user_error('Bad data: row %d has %d elements (expecting 4)' % (index + 1, len(row)))
           submission_url = row[3]
         if not valid_submission_url(submission_url):
-          return utils.user_error('Bad data: row %d has an invalid OrganizerHQ URL' % (index + 1))
+          return utils.user_error('Bad data: row %d has an invalid submission URL' % (index + 1))
       def tx():
         for row in data:
           if settings.VIRTUAL_EVENT:
@@ -376,6 +472,11 @@ def item():
     with_retries(tx)
   elif action == 'Delete':
     item_id = request.form['item_id']
+    item_to_delete = Item.by_id(item_id)
+    if item_to_delete is None:
+      return utils.user_error('Project not found.')
+    if item_to_delete.managed_source is not None:
+      return utils.user_error('Integration-managed projects cannot be deleted.')
     try:
       def tx():
         db.session.execute(ignore_table.delete(ignore_table.c.item_id == item_id))
@@ -404,6 +505,10 @@ def item():
     error = []
     for item_id in item_ids:
       try:
+        item_to_delete = Item.by_id(item_id)
+        if item_to_delete is None or item_to_delete.managed_source is not None:
+          error.append(item_id)
+          continue
         def tx():
           db.session.execute(ignore_table.delete(ignore_table.c.item_id == item_id))
           Item.query.filter_by(id=item_id).delete()
@@ -425,7 +530,7 @@ def queue_shutdown():
   annotators = Annotator.query.order_by(Annotator.id).all()
   if action == 'queue':
     for an in annotators:
-      if an.active:
+      if an.effectively_active:
         an.stop_next = True
     def tx():
       Setting.set(SETTING_STOP_QUEUE, True)
@@ -491,7 +596,7 @@ def admin_api_session():
         setting_stop_queue = SETTING_TRUE
         def tx():
           for an in annotators:
-            if an.active:
+            if an.effectively_active:
               an.stop_next = True
               affected_annotators.append(an.id)
           db.session.commit()
@@ -501,7 +606,7 @@ def admin_api_session():
         setting_stop_queue = SETTING_FALSE
         def tx():
           for an in annotators:
-            if an.active:
+            if an.effectively_active:
               an.stop_next = False
               affected_annotators.append(an.id)
           db.session.commit()
@@ -612,7 +717,7 @@ def item_patch():
   if submission_reference is not None:
     submission_reference = submission_reference.strip()
     if not valid_submission_url(submission_reference):
-      return utils.user_error('OrganizerHQ URL must be a valid HTTP or HTTPS URL.')
+      return utils.user_error('Submission URL must be a valid HTTP or HTTPS URL.')
 
   def tx():
     item = Item.by_id(request.form['item_id'])
@@ -677,6 +782,8 @@ def annotator_patch():
         if raw_project_id and project is None:
           raise ValueError('Project %s not found' % raw_project_id)
         if annotator.project_id != (project.id if project else None):
+          if annotator.managed_source is not None:
+            raise ValueError('Integration-managed project assignments must be changed through a roster import.')
           has_initial_votes = Decision.query.filter_by(annotator_id=annotator.id).first() is not None
           has_bracket_votes = BracketVote.query.filter_by(annotator_id=annotator.id).first() is not None
           if has_initial_votes or has_bracket_votes:
@@ -721,10 +828,12 @@ def annotator():
         return utils.server_error(str(e))
   elif action == 'Email':
     annotator_id = request.form['annotator_id']
-    try:
-      email_invite_links(Annotator.by_id(annotator_id))
-    except Exception as e:
-      return utils.server_error(str(e))
+    delivery = InvitationDelivery.query.filter_by(annotator_id=annotator_id).first()
+    if delivery is None:
+      delivery = InvitationDelivery(annotator_id=annotator_id, status='pending')
+      db.session.add(delivery)
+      db.session.commit()
+    queue_invitation(delivery, allow_resend=True)
   elif action == 'Disable' or action == 'Enable':
     annotator_id = request.form['annotator_id']
     target_state = action == 'Enable'
@@ -734,6 +843,11 @@ def annotator():
     with_retries(tx)
   elif action == 'Delete':
     annotator_id = request.form['annotator_id']
+    annotator_to_delete = Annotator.by_id(annotator_id)
+    if annotator_to_delete is None:
+      return utils.user_error('Participant not found.')
+    if annotator_to_delete.managed_source is not None:
+      return utils.user_error('Integration-managed participants cannot be deleted.')
     try:
       def tx():
         db.session.execute(ignore_table.delete(ignore_table.c.annotator_id == annotator_id))
@@ -762,6 +876,10 @@ def annotator():
     errored = []
     for annotator_id in annotator_ids:
       try:
+        annotator_to_delete = Annotator.by_id(annotator_id)
+        if annotator_to_delete is None or annotator_to_delete.managed_source is not None:
+          errored.append(annotator_id)
+          continue
         def tx():
           db.session.execute(ignore_table.delete(ignore_table.c.annotator_id == annotator_id))
           Annotator.query.filter_by(id=annotator_id).delete()

@@ -9,7 +9,8 @@ import gavel.settings as settings
 import gavel.utils as utils
 from sqlalchemy import event
 from sqlalchemy import (or_, not_)
-from flask import (json)
+from sqlalchemy.orm import object_session
+from flask import has_request_context, json, request
 import asyncio
 
 loop = asyncio.new_event_loop()
@@ -19,6 +20,16 @@ item_schema = ItemSchema()
 annotator_schema = AnnotatorSchema()
 flag_schema = FlagSchema()
 setting_schema = SettingSchema()
+
+
+def skip_model_event(target):
+  if not has_request_context():
+    return True
+  auth = request.authorization
+  if not auth or not utils.check_auth(auth.username, auth.password):
+    return True
+  session = object_session(target)
+  return session is not None and session.info.get('suppress_socket_events')
 
 def standardize(target):
   try:
@@ -60,6 +71,8 @@ def standardize(target):
 def injectAnnotator(target, target_dumped):
   count = Decision.query.filter(Decision.annotator_id == target.id).count()
   target_dumped.update({
+    'active': target.effectively_active,
+    'roster_active': target.roster_active,
     'votes': count
   })
 
@@ -87,11 +100,20 @@ def injectItem(target, target_dumped):
   viewed = len(target.viewed)
 
   target_dumped.update({
+    'active': target.effectively_active,
+    'roster_active': target.roster_active,
     'viewed': viewed,
     'votes': Decision.query.filter(or_(Decision.winner_id == target.id, Decision.loser_id == target.id)).distinct(Decision.id).count(),
     'skipped': skipped
   })
   return target_dumped
+
+@socketio.on('connect', namespace='/admin')
+def admin_socket_connect():
+  auth = request.authorization
+  if not auth or not utils.check_auth(auth.username, auth.password):
+    return False
+
 
 @socketio.on('user.connected', namespace='/admin')
 def test_connect(data):
@@ -113,59 +135,70 @@ def triggerRelatedItemUpdates(data):
     return
 
 @event.listens_for(Annotator, 'after_insert')
-@utils.requires_auth
 def annotator_listen_insert(mapper, connection, target):
+  if skip_model_event(target):
+    return
   socketio.emit(ANNOTATOR_INSERTED, standardize(target), namespace='/admin')
 
 @event.listens_for(Annotator, 'after_update')
-@utils.requires_auth
 def annotator_listen_modify(mapper, connection, target):
+  if skip_model_event(target):
+    return
   socketio.emit(ANNOTATOR_UPDATED, standardize(target), namespace='/admin')
 
 @event.listens_for(Annotator, 'after_delete')
-@utils.requires_auth
 def annotator_listen_delete(mapper, connection, target):
+  if skip_model_event(target):
+    return
   print(str(target), str(mapper))
   socketio.emit(ANNOTATOR_DELETED, {"target": json.dumps(annotator_schema.dump(target))}, namespace='/admin')
 
 @event.listens_for(Item, 'after_insert')
-@utils.requires_auth
 def item_listen_insert(mapper, connection, target):
+  if skip_model_event(target):
+    return
   socketio.emit(ITEM_INSERTED, standardize(target), namespace='/admin')
 
 @event.listens_for(Item, 'after_update')
-@utils.requires_auth
 def item_listen_modify(mapper, connection, target):
+  if skip_model_event(target):
+    return
   socketio.emit(ITEM_UPDATED, standardize(target), namespace='/admin')
 
 @event.listens_for(Item, 'after_delete')
-@utils.requires_auth
 def item_listen_delete(mapper, connection, target):
+  if skip_model_event(target):
+    return
   print(str(target), str(mapper))
   socketio.emit(ITEM_DELETED, {"target": item_schema.dump(target)}, namespace='/admin')
 
 @event.listens_for(Flag, 'after_insert')
-@utils.requires_auth
 def flag_listen_insert(mapper, connection, target):
+  if skip_model_event(target):
+    return
   socketio.emit(FLAG_INSERTED, standardize(target), namespace='/admin')
 
 @event.listens_for(Flag, 'after_update')
-@utils.requires_auth
 def flag_listen_update(mapper, connection, target):
+  if skip_model_event(target):
+    return
   socketio.emit(FLAG_UPDATED, standardize(target), namespace='/admin')
 
 @event.listens_for(Flag, 'after_delete')
-@utils.requires_auth
 def flag_listen_delete(mapper, connection, target):
+  if skip_model_event(target):
+    return
   print(str(target), str(mapper))
   socketio.emit(FLAG_DELETED, {"target": json.dumps(flag_schema.dump(target))}, namespace='/admin')
 
 @event.listens_for(Setting, 'after_insert')
-@utils.requires_auth
 def setting_listen_insert(mapper, connection, target):
+  if skip_model_event(target):
+    return
   socketio.emit(SETTING_INSERTED, standardize(target), namespace='/admin')
 
 @event.listens_for(Setting, 'after_update')
-@utils.requires_auth
 def setting_listen_update(mapper, connection, target):
+  if skip_model_event(target):
+    return
   socketio.emit(SETTING_UPDATED, standardize(target), namespace='/admin')

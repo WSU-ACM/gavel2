@@ -245,7 +245,7 @@ async function initTables() {
         {headerName:"Project Name", width: standardNameWidth, minWidth: minDecimalWidth, field:"name", filter: true},
         ...(!getIsVirtual() ? [{headerName:"Location", width: standardLocationWidth, minWidth: minDecimalWidth, field:"location", filter: true, columnGroupShow: "open"}] : []),
         {headerName:"Description", field:"description", ...standardDescriptionOptions, columnGroupShow: "open"},
-        {headerName:"OrganizerHQ", width: standardLocationWidth, minWidth: minDecimalWidth, field:"submission_reference", filter: true, columnGroupShow: "open", cellRenderer: UrlRenderer},
+        {headerName:"Submission URL", width: standardLocationWidth, minWidth: minDecimalWidth, field:"submission_reference", filter: true, columnGroupShow: "open", cellRenderer: UrlRenderer},
         ...(getIsVirtual() ? [
           {headerName:"Tagline", field:"tagline", ...standardDescriptionOptions, columnGroupShow: "open"},
           {headerName:"Video", width: standardLocationWidth, minWidth: minDecimalWidth, field:"video_reference", filter: true, columnGroupShow: "open", cellRenderer: UrlRenderer},

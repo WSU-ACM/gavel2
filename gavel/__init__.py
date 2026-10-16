@@ -54,6 +54,7 @@ import gavel.settings as settings
 app.config['SQLALCHEMY_DATABASE_URI'] = settings.DB_URI
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = settings.SECRET_KEY
+app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
 
 from flask_assets import Environment, Bundle
 
@@ -92,6 +93,21 @@ from celery import Celery
 app.config['CELERY_BROKER_URL'] = settings.BROKER_URI
 celery = Celery(app.name, broker=app.config['CELERY_BROKER_URL'])
 celery.conf.update(app.config)
+
+
+class FlaskContextTask(celery.Task):
+  abstract = True
+
+  def __call__(self, *args, **kwargs):
+    with app.app_context():
+      try:
+        return super(FlaskContextTask, self).__call__(*args, **kwargs)
+      finally:
+        from gavel.models import db
+        db.session.remove()
+
+
+celery.Task = FlaskContextTask
 
 from gavel.models import db, ma
 

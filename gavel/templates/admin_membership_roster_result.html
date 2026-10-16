@@ -1,0 +1,28 @@
+{% extends "admin_layout.html" %}
+{% block title %}Membership Roster Result{% endblock %}
+{% block content %}
+<main style="max-width: 860px; margin: 48px auto; padding: 32px; background: white; border-radius: 8px;">
+  <p><a href="{{ url_for('admin') }}">Back to dashboard</a> &middot; <a href="{{ url_for('membership_roster') }}">Import another roster</a></p>
+  <h1>Roster saved</h1>
+  <p>Projects and participants were committed together. Invitation delivery is tracked separately.</p>
+
+  <table style="width: 100%; margin: 24px 0; text-align: left;">
+    <thead><tr><th>Resource</th><th>Created</th><th>Updated</th><th>Unchanged</th><th>Deactivated</th></tr></thead>
+    <tbody>
+      <tr><th>Projects</th><td>{{ roster_import.projects_created }}</td><td>{{ roster_import.projects_updated }}</td><td>{{ roster_import.projects_unchanged }}</td><td>{{ roster_import.projects_deactivated }}</td></tr>
+      <tr><th>Participants</th><td>{{ roster_import.participants_created }}</td><td>{{ roster_import.participants_updated }}</td><td>{{ roster_import.participants_unchanged }}</td><td>{{ roster_import.participants_deactivated }}</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Invitations</h2>
+  <p>Pending: {{ invitation_counts.pending }} &middot; Sent: {{ invitation_counts.sent }} &middot; Failed: {{ invitation_counts.failed }}</p>
+  {% if invitation_counts.pending %}<p>Refresh this page to update delivery status.</p>{% endif %}
+
+  {% for delivery in retryable_deliveries %}
+  <form action="{{ url_for('membership_roster_invitation_retry', delivery_id=delivery.id) }}" method="post" style="display: inline-block; margin-right: 8px;">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+    <button type="submit">Retry failed invitation {{ delivery.id }}</button>
+  </form>
+  {% endfor %}
+</main>
+{% endblock %}

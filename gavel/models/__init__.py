@@ -26,6 +26,7 @@ from gavel.models.tournament import (
     BracketMatch,
     BracketVote,
 )
+from gavel.models.membership_import import MembershipRosterImport, InvitationDelivery
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.sql.expression import desc
@@ -39,10 +40,10 @@ def with_retries(tx_func):
     '''
     while True:
         try:
-            tx_func()
+            result = tx_func()
         except sqlalchemy.exc.OperationalError as err:
             if not isinstance(err.orig, psycopg2.errors.SerializationFailure):
                 raise
             db.session.rollback()
         else:
-            break
+            return result
