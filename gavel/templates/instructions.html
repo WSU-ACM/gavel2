@@ -22,21 +22,16 @@
       <div class="w-full items-top flex pb-2.4">
         <div class="border-2 border-indigo w-2.4 h-2.4 rounded-1/2 text-16 text-center text-indigo font-medium flex-none">4</div>
         <div class="ml-1.6">
-          {% if virtual %}
-          If the submission does not demonstrate the project, appears to break hackathon rules, or contains inappropriate content, report it for organizer review.
-          {% else %}
-          Skip a project only when its team is absent or presenting to another participant. Report projects that may break hackathon rules or the Code of Conduct.
+          {% if not virtual %}
+          Skip a project only when its team is absent or presenting to another participant.
           {% endif %}
+          Keep reviewing projects until Gavel tells you that none are currently available. Follow any next steps from the hackathon organizers.
         </div>
-      </div>
-      <div class="w-full items-top flex pb-2.4">
-        <div class="border-2 border-indigo w-2.4 h-2.4 rounded-1/2 text-16 text-center text-indigo font-medium flex-none">5</div>
-        <div class="ml-1.6">Keep reviewing projects until Gavel tells you that none are currently available. Follow any next steps from the hackathon organizers.</div>
       </div>
     </div>
     <div class="md:max-w-48">
       <p class="instructionsAsterisk">
-        Ask a hackathon organizer if you have questions about the voting criteria, project rules, or reporting process.
+        Ask a hackathon organizer if you have questions about the voting criteria or project rules.
       </p>
     </div>
   </div>

@@ -20,7 +20,6 @@
         <p class="text-gray text-12 md:text-14 pb-1.6">Compare it with the previous project, then select “{{ finished_button_text }}” to choose the stronger one.</p>
       </div>
       <div class="hidden md:flex items-center">
-        <button class="bg-red bg-flag h-4 w-4.8 rounded m-.6" title="Report project" aria-label="Report project" type="button" id="reportbutton" onclick="toggleReport()"></button>
         {% if not virtual %}
         <button class="bg-purple bg-chevron h-4 w-4.8 rounded m-.6" title="Skip project" aria-label="Skip project" type="button" id="skipButton" onclick="toggleSkip()"></button>
         {% endif %}
@@ -44,16 +43,11 @@
   </div>
 
   <div class="fixed md:hidden bottomPanel flex w-full flex-row inline-flex justify-between">
-    <button class="bg-red bg-flag h-4.8 w-6 rounded m-.6" title="Report project" aria-label="Report project" type="button" id="reportbutton" onclick="toggleReport()"></button>
     {% if not virtual %}
     <button class="skipButton m-.6" type="button" title="Skip project" aria-label="Skip project" id="skipButton" onclick="toggleSkip()"></button>
     {% endif %}
     <button class="doneButton doneButtonText flex-grow m-.6" type="button" title="{{ finished_button_text }}" id="doneButton" onclick="toggleModal()">{{ finished_button_text }}</button>
   </div>
-
-  {% with prev=prev, next=next %}
-    {% include './vote_components/report_modal.html' %}
-  {% endwith %}
 
   {% with prev=prev, next=next, action="/vote" %}
     {% include "./vote_components/skip_modal.html" %}

@@ -20,7 +20,6 @@
         <p class="text-gray text-12 md:text-14 pb-1.6">There is nothing to compare yet. Select “{{ finished_button_text }}” when you are ready to continue.</p>
       </div>
       <div class="hidden md:flex items-center">
-        <button class="bg-red bg-flag h-4 w-4.8 rounded m-.6" title="Report project" aria-label="Report project" type="button" id="reportbutton" onclick="toggleReport()"></button>
         {% if not virtual %}
         <button class="bg-purple bg-chevron h-4 w-4.8 rounded m-.6" title="Skip project" aria-label="Skip project" type="button" id="skipButton" onclick="toggleSkip()"></button>
         {% endif %}
@@ -44,7 +43,6 @@
   </div>
 
   <div class="fixed md:hidden bottomPanel flex w-full flex-row inline-flex justify-between">
-    <button class="bg-red bg-flag h-4.8 w-6 rounded m-.6" title="Report project" aria-label="Report project" type="button" onclick="toggleReport()"></button>
     {% if not virtual %}
     <button class="skipButton m-.6" title="Skip project" aria-label="Skip project" type="button" onclick="toggleSkip()"></button>
     {% endif %}
@@ -59,10 +57,6 @@
 
   {% with item=item, action="/begin" %}
     {% include './vote_components/skip_modal.html' %}
-  {% endwith %}
-
-  {% with next=item %}
-    {% include './vote_components/report_modal.html' %}
   {% endwith %}
 </div>
 

@@ -12,15 +12,6 @@
     {% endif %}
   </div>
 
-  <div class="w-full">
-    <p class="w-full text-14 md:text-18 text-gray pb-1.6">
-      {{ item.tagline }}
-    </p>
-
-    <p class="capitalize text-12 md:text-16 text-indigo font-medium pb-.8">Project Details</p>
-    <pre class="whitespace-pre-wrap w-full max-w-full text-12 md:text-14 pb-1.2" style="white-space: pre-wrap; word-wrap: break-word;">{{ item.description }}</pre>
-  </div>
-
   <div class="flex flex-wrap flex-row pb-1.6">
     {% if item.submission_reference and (item.submission_reference.startswith('http://') or item.submission_reference.startswith('https://')) %}
       <a class="bg-indigo rounded text-white text-center py-.8 px-1.2 text-14 mr-.8" href="{{ item.submission_reference }}" target="_blank" rel="noopener noreferrer">View submission (new tab)</a>
@@ -29,19 +20,4 @@
       <a class="bg-indigo rounded text-white text-center py-.8 px-1.2 text-14" href="{{ item.submission_website }}" target="_blank" rel="noopener noreferrer">Project website (new tab)</a>
     {% endif %}
   </div>
-  {% if virtual %}
-  <div class="w-full flex-grow md:max-w-56">
-    <p class="uppercase text-12 md:text-16 text-indigo font-medium pb-.8">video submission</p>
-    {% if item.video_reference and (item.video_reference.startswith('http://') or item.video_reference.startswith('https://')) %}
-      <div class="h-auto w-full block pb-1.6">
-        {% with url=item.video_reference, id=(range(1, 50000) | random) %}
-          {% include "vote_components/video_display.html" %}
-        {% endwith %}
-      </div>
-      <a class="bg-indigo rounded text-white text-center py-.8 px-1.2 text-14" href="{{ item.video_reference }}" target="_blank" rel="noopener noreferrer">Open video (new tab)</a>
-    {% else %}
-      <p class="text-12 md:text-14 pb-1.2">No video submission was provided.</p>
-    {% endif %}
-  </div>
-  {% endif %}
 </div>
