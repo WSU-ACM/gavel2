@@ -394,6 +394,44 @@ class MembershipRosterTest(unittest.TestCase):
         self.assertEqual('failed', InvitationDelivery.query.one().status)
         self.assertEqual('queue_failed', InvitationDelivery.query.one().failure_code)
 
+    def test_project_submission_url_can_be_updated(self):
+        project = Item(
+            'Project',
+            'N/A',
+            'Description',
+            submission_reference='https://example.com/old',
+        )
+        db.session.add(project)
+        db.session.commit()
+        project_id = project.id
+
+        client = app.test_client()
+        credentials = base64.b64encode(b'admin:admin').decode('ascii')
+        auth = {'Authorization': 'Basic ' + credentials}
+        with client.session_transaction() as client_session:
+            client_session['_csrf_token'] = 'token'
+
+        with mock.patch('gavel.controllers.socket.socketio.emit'):
+            response = client.post(
+                '/admin/item_patch',
+                data={
+                    '_csrf_token': 'token',
+                    'item_id': str(project_id),
+                    'name': project.name,
+                    'location': project.location,
+                    'description': project.description,
+                    'submission_reference': 'https://example.com/new',
+                },
+                headers=auth,
+            )
+
+        self.assertEqual(302, response.status_code)
+        db.session.expire_all()
+        self.assertEqual(
+            'https://example.com/new',
+            Item.query.get(project_id).submission_reference,
+        )
+
     def test_endpoint_requires_auth_and_csrf_and_redacts_values(self):
         client = app.test_client()
         credentials = base64.b64encode(b'admin:admin').decode('ascii')

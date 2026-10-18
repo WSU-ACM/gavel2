@@ -86,7 +86,6 @@ def injectFlag(target, target_dumped):
   })
   return target_dumped
 
-@celery.task
 def injectItem(target, target_dumped):
   assigned = Annotator.query.filter(Annotator.next == target).all()
   viewed_ids = {i.id for i in target.viewed}
@@ -130,7 +129,7 @@ def triggerRelatedItemUpdates(data):
     ignore_ids = {i['id'] for i in data['ignore']}
     items = Item.query.filter(Item.id.in_(ignore_ids))
     for i in items:
-      socketio.emit(ITEM_UPDATED, {'type': "item", 'target': json.dumps(injectItem.delay(i, item_schema.dump(i)))}, namespace='/admin')
+      socketio.emit(ITEM_UPDATED, {'type': "item", 'target': json.dumps(injectItem(i, item_schema.dump(i)))}, namespace='/admin')
   except Exception as e:
     return
 
